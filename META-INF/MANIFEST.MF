@@ -5,6 +5,7 @@ Specification-Version: 1
 Implementation-Title: strikeafterswing
 Implementation-Version: 1.0.0
 Implementation-Vendor: Tower of Sighs
-Implementation-Timestamp: 2026-06-28T19:34:02+0800
-MixinConfigs: strikeafterswing.mixins.json
+Implementation-Timestamp: 2026-06-28T21:31:31+0800
+MixinConfigs: strikeafterswing.mixins.json,strikeafterswing.legacy16.mix
+ ins.json
 

@@ -1,4 +1,4 @@
-package cc.sighs.strikeafterswing.mixin;
+package cc.sighs.strikeafterswing.mixin.legacy;
 
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
@@ -7,13 +7,14 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import java.util.List;
 import java.util.Set;
 
-public final class ForgeMixinPlugin implements IMixinConfigPlugin {
-    private boolean disabled;
+public final class LegacyForgeMixinPlugin implements IMixinConfigPlugin {
+    private boolean enabled;
 
     @Override
     public void onLoad(String mixinPackage) {
-        disabled = isClassPresent("net.neoforged.fml.loading.FMLLoader")
-                || !isClassResourcePresent("net.minecraft.world.entity.Entity");
+        enabled = isClassResourcePresent("net.minecraft.entity.Entity")
+                && !isClassResourcePresent("net.minecraft.world.entity.Entity")
+                && !isClassPresent("net.neoforged.fml.loading.FMLLoader");
     }
 
     @Override
@@ -23,7 +24,7 @@ public final class ForgeMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        return !disabled;
+        return enabled;
     }
 
     @Override
@@ -45,7 +46,7 @@ public final class ForgeMixinPlugin implements IMixinConfigPlugin {
 
     private static boolean isClassPresent(String className) {
         try {
-            Class.forName(className, false, ForgeMixinPlugin.class.getClassLoader());
+            Class.forName(className, false, LegacyForgeMixinPlugin.class.getClassLoader());
             return true;
         } catch (ClassNotFoundException ignored) {
             return false;
@@ -54,6 +55,6 @@ public final class ForgeMixinPlugin implements IMixinConfigPlugin {
 
     private static boolean isClassResourcePresent(String className) {
         String path = className.replace('.', '/') + ".class";
-        return ForgeMixinPlugin.class.getClassLoader().getResource(path) != null;
+        return LegacyForgeMixinPlugin.class.getClassLoader().getResource(path) != null;
     }
 }
