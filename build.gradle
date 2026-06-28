@@ -131,6 +131,12 @@ mixin {
 sourceSets.main.resources {
     srcDir 'src/generated/resources'
     exclude 'META-INF/neoforge.mods.toml'
+    exclude 'fabric.mod.json'
+    exclude 'strikeafterswing.fabric.mixins.json'
+}
+
+sourceSets.main.java {
+    exclude 'cc/sighs/strikeafterswing/fabric/**'
 }
 
 repositories {
@@ -225,7 +231,9 @@ tasks.register('universalJar', Jar) {
                     "MixinConfigs"            : "${mod_id}.mixins.json,${mod_id}.legacy16.mixins.json"])
     }
 
-    from(zipTree(tasks.named('jar', Jar).flatMap { it.archiveFile }))
+    from(zipTree(tasks.named('jar', Jar).flatMap { it.archiveFile })) {
+        exclude 'cc/sighs/strikeafterswing/fabric/**'
+    }
     from({
         def neoJar = file("build/libs/${mod_name}-NeoForge-${mod_version}.jar")
         if (!neoJar.exists()) {
@@ -234,6 +242,17 @@ tasks.register('universalJar', Jar) {
         zipTree(neoJar)
     }) {
         exclude 'META-INF/MANIFEST.MF'
+        exclude 'cc/sighs/strikeafterswing/fabric/**'
+    }
+    from({
+        def fabricJar = file("fabric-build/build/libs/${mod_name}-Fabric-${mod_version}.jar")
+        if (!fabricJar.exists()) {
+            throw new GradleException("Missing ${fabricJar}. Run Gradle 9 from fabric-build first.")
+        }
+        zipTree(fabricJar)
+    }) {
+        exclude 'META-INF/MANIFEST.MF'
+        exclude 'cc/sighs/strikeafterswing/fabric26/**'
     }
 }
 

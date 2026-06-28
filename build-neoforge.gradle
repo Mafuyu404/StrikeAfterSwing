@@ -19,6 +19,7 @@ sourceSets {
         java {
             setSrcDirs(['src/main/java', 'src/neoforge/java'])
             exclude 'cc/sighs/strikeafterswing/Strikeafterswing.java'
+            exclude 'cc/sighs/strikeafterswing/fabric/**'
         }
         resources {
             setSrcDirs(['src/main/resources'])

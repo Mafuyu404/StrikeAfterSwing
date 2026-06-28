@@ -1,0 +1,21 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "plugin": "cc.sighs.strikeafterswing.fabric26.Fabric26MixinPlugin",
+  "package": "cc.sighs.strikeafterswing.fabric26.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "Fabric26EntityAccessor",
+    "Fabric26LivingEntityAccessor",
+    "Fabric26LivingEntityHurtMixin",
+    "Fabric26MinecraftServerTickMixin"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

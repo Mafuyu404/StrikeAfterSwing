@@ -1,0 +1,78 @@
+plugins {
+    id 'fabric-loom' version '1.11-SNAPSHOT'
+    id 'java'
+}
+
+def root = file('..')
+def props = new Properties()
+file("${root}/gradle.properties").withInputStream { props.load(it) }
+props.each { key, value -> ext.set(key.toString(), value.toString()) }
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = "${mod_name}-Fabric"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(17)
+}
+
+sourceSets {
+    main {
+        java {
+            setSrcDirs(["${root}/src/main/java"])
+            exclude 'cc/sighs/strikeafterswing/Strikeafterswing.java'
+            exclude 'cc/sighs/strikeafterswing/fabric26/**'
+        }
+        resources {
+            setSrcDirs(["${root}/src/main/resources"])
+            exclude 'META-INF/**'
+            exclude 'strikeafterswing.mixins.json'
+            exclude 'strikeafterswing.neoforge.mixins.json'
+            exclude 'strikeafterswing.legacy16.mixins.json'
+        }
+    }
+}
+
+loom {
+    mixin {
+        defaultRefmapName = "${mod_id}.fabric.refmap.json"
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${fabric_minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    def replaceProperties = [
+            minecraft_version       : fabric_minecraft_version,
+            minecraft_version_range : fabric_minecraft_version_range,
+            fabric_loader_version   : fabric_loader_version,
+            mod_id                  : mod_id,
+            mod_name                : mod_name,
+            mod_license             : mod_license,
+            mod_version             : mod_version,
+            mod_authors             : mod_authors,
+            mod_description         : mod_description
+    ]
+
+    inputs.properties replaceProperties
+
+    filesMatching(['fabric.mod.json', 'pack.mcmeta']) {
+        expand replaceProperties + [project: project]
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 17
+}
