@@ -1,0 +1,22 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "plugin": "cc.sighs.strikeafterswing.mixin.ForgeMixinPlugin",
+  "package": "cc.sighs.strikeafterswing.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "refmap": "strikeafterswing.refmap.json",
+  "mixins": [
+    "EntityAccessor",
+    "LivingEntityAccessor",
+    "LivingEntityHurtMixin",
+    "MinecraftServerTickMixin"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}
