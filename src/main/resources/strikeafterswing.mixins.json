@@ -6,9 +6,8 @@
   "compatibilityLevel": "JAVA_8",
   "refmap": "strikeafterswing.refmap.json",
   "mixins": [
-    "EntityAccessor",
     "LivingEntityAccessor",
-    "LivingEntityHurtMixin",
+    "MobAttackMixin",
     "MinecraftServerTickMixin"
   ],
   "client": [

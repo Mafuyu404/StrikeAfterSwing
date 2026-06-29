@@ -5,9 +5,8 @@
   "package": "cc.sighs.strikeafterswing.fabric26.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
-    "Fabric26EntityAccessor",
     "Fabric26LivingEntityAccessor",
-    "Fabric26LivingEntityHurtMixin",
+    "Fabric26MobAttackMixin",
     "Fabric26MinecraftServerTickMixin"
   ],
   "client": [

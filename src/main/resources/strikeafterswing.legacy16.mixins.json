@@ -5,7 +5,7 @@
   "package": "cc.sighs.strikeafterswing.mixin.legacy",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
-    "LegacyLivingEntityHurtMixin",
+    "LegacyMobAttackMixin",
     "LegacyMinecraftServerTickMixin"
   ],
   "client": [

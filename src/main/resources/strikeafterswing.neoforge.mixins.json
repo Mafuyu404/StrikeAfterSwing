@@ -4,9 +4,8 @@
   "package": "cc.sighs.strikeafterswing.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
-    "EntityAccessor",
     "LivingEntityAccessor",
-    "LivingEntityHurtMixin",
+    "MobAttackMixin",
     "MinecraftServerTickMixin"
   ],
   "client": [

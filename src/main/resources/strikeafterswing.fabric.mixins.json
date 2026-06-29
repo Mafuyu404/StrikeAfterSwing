@@ -6,7 +6,8 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "strikeafterswing.fabric.refmap.json",
   "mixins": [
-    "FabricLivingEntityHurtMixin",
+    "FabricLivingEntityAccessor",
+    "FabricMobAttackMixin",
     "FabricMinecraftServerTickMixin"
   ],
   "client": [

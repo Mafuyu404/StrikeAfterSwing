@@ -9,12 +9,11 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Pseudo
-@Mixin(targets = "net.minecraft.entity.LivingEntity")
-public abstract class LegacyLivingEntityHurtMixin {
-    @Inject(method = "func_70097_a", at = @At("HEAD"), cancellable = true, remap = false)
-    private void strikeafterswing$delayIncomingMobAttack(@Coerce Object source, float amount,
-                                                        CallbackInfoReturnable<Boolean> cir) {
-        if (LegacyPendingAttackManager.delayIncomingMobAttack(this, source, amount)) {
+@Mixin(targets = "net.minecraft.entity.MobEntity")
+public abstract class LegacyMobAttackMixin {
+    @Inject(method = "func_70652_k", at = @At("HEAD"), cancellable = true, remap = false)
+    private void strikeafterswing$delayMobAttack(@Coerce Object target, CallbackInfoReturnable<Boolean> cir) {
+        if (LegacyPendingAttackManager.delayMobAttack(this, target)) {
             cir.setReturnValue(true);
         }
     }

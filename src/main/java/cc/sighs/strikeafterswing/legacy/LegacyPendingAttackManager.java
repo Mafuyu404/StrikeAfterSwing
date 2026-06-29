@@ -7,48 +7,34 @@ import java.util.LinkedList;
 import java.util.List;
 
 public final class LegacyPendingAttackManager {
-    private static final org.apache.logging.log4j.Logger LOGGER =
-            org.apache.logging.log4j.LogManager.getLogger("StrikeAfterSwingLegacy");
     private static final List<PendingAttack> PENDING_ATTACKS = new LinkedList<>();
-    private static final ThreadLocal<Boolean> BYPASS = ThreadLocal.withInitial(() -> false);
+    private static boolean bypassing;
 
-    private static final RuntimeMethod DAMAGE_SOURCE_ENTITY = RuntimeMethod.noArgs("func_76346_g");
-    private static final RuntimeMethod DAMAGE_SOURCE_DIRECT_ENTITY = RuntimeMethod.noArgs("func_76364_f");
-    private static final RuntimeMethod WORLD_GAME_TIME = RuntimeMethod.noArgs("func_82737_E");
     private static final RuntimeMethod MOB_ATTACK_TARGET = RuntimeMethod.withArgs("func_70652_k", "net.minecraft.entity.Entity");
     private static final RuntimeMethod ENTITY_IS_ALIVE = RuntimeMethod.noArgs("func_70089_S");
-    private static final RuntimeMethod ENTITY_IS_ATTACKABLE = RuntimeMethod.noArgs("func_70067_L");
-    private static final RuntimeMethod ENTITY_BB_WIDTH = RuntimeMethod.noArgs("func_213311_cf");
-    private static final RuntimeMethod ENTITY_DISTANCE_TO_SQR = RuntimeMethod.withArgs("func_70068_e", "net.minecraft.entity.Entity");
     private static final RuntimeMethod SWING_DURATION = RuntimeMethod.noArgs("func_82166_i");
-    private static final RuntimeField ENTITY_LEVEL = new RuntimeField("field_70170_p");
     private static final RuntimeField ENTITY_REMOVED = new RuntimeField("field_70128_L");
+    private static long tickCounter;
 
     private LegacyPendingAttackManager() {
     }
 
-    public static boolean delayIncomingMobAttack(Object target, Object source, float amount) {
-        if (BYPASS.get()) {
+    public static boolean delayMobAttack(Object attacker, Object target) {
+        if (bypassing || !canQueue(attacker, target)) {
             return false;
         }
 
-        Object level = ENTITY_LEVEL.get(target);
-        if (level == null || !"net.minecraft.world.server.ServerWorld".equals(level.getClass().getName())) {
-            return false;
+        if (hasPendingAttack(attacker)) {
+            return true;
         }
 
-        Object sourceEntity = DAMAGE_SOURCE_ENTITY.invoke(source);
-        Object directEntity = DAMAGE_SOURCE_DIRECT_ENTITY.invoke(source);
-        if (sourceEntity == null || (directEntity != null && sourceEntity != directEntity) || !isMob(sourceEntity)) {
-            LOGGER.info("skip source={}, direct={}, sourceClass={}", sourceEntity, directEntity,
-                    sourceEntity == null ? "null" : sourceEntity.getClass().getName());
-            return false;
-        }
-
-        return queueAttack(sourceEntity, target, source, amount, level);
+        int delayTicks = Math.max(1, asInt(SWING_DURATION.invoke(attacker)));
+        PENDING_ATTACKS.add(new PendingAttack(attacker, target, tickCounter + delayTicks));
+        return true;
     }
 
     public static void tickPendingAttacks() {
+        tickCounter++;
         if (PENDING_ATTACKS.isEmpty()) {
             return;
         }
@@ -56,7 +42,7 @@ public final class LegacyPendingAttackManager {
         Iterator<PendingAttack> iterator = PENDING_ATTACKS.iterator();
         while (iterator.hasNext()) {
             PendingAttack attack = iterator.next();
-            if (getGameTime(attack.level) < attack.executeGameTime) {
+            if (tickCounter < attack.executeTick) {
                 continue;
             }
 
@@ -65,57 +51,21 @@ public final class LegacyPendingAttackManager {
         }
     }
 
-    private static boolean queueAttack(Object attacker, Object target, Object source, float amount, Object level) {
-        if (isRemoved(attacker) || !isAlive(attacker) || isRemoved(target) || !isAttackable(target)) {
-            LOGGER.info("queue invalid attackerRemoved={} attackerAlive={} targetRemoved={} targetAttackable={}",
-                    isRemoved(attacker), isAlive(attacker), isRemoved(target), isAttackable(target));
-            return false;
-        }
-
-        if (hasPendingAttack(attacker)) {
-            LOGGER.info("already pending attacker={}", attacker);
-            return true;
-        }
-
-        int delayTicks = Math.max(1, asInt(SWING_DURATION.invoke(attacker)));
-        long executeGameTime = getGameTime(level) + delayTicks;
-        PENDING_ATTACKS.add(new PendingAttack(attacker, target, level, executeGameTime, source, amount));
-        LOGGER.info("queued attacker={} target={} now={} execute={} delay={} amount={}",
-                attacker, target, getGameTime(level), executeGameTime, delayTicks, amount);
-        return true;
-    }
-
     private static void execute(PendingAttack attack) {
-        if (!isStillValid(attack.attacker, attack.target)) {
-            LOGGER.info("execute invalid attackerAlive={} attackerRemoved={} targetAlive={} targetRemoved={} targetAttackable={}",
-                    isAlive(attack.attacker), isRemoved(attack.attacker), isAlive(attack.target),
-                    isRemoved(attack.target), isAttackable(attack.target));
+        if (!canQueue(attack.attacker, attack.target)) {
             return;
         }
 
-        BYPASS.set(true);
+        bypassing = true;
         try {
-            if (isMobAttackStillValid(attack.attacker, attack.target)) {
-                Object result = MOB_ATTACK_TARGET.invoke(attack.attacker, attack.target);
-                LOGGER.info("execute attack result={} attacker={} target={}", result, attack.attacker, attack.target);
-            } else {
-                LOGGER.info("execute out of range distance={} attackerWidth={} targetWidth={}",
-                        distanceToSqr(attack.attacker, attack.target), getBbWidth(attack.attacker),
-                        getBbWidth(attack.target));
-            }
+            MOB_ATTACK_TARGET.invoke(attack.attacker, attack.target);
         } finally {
-            BYPASS.set(false);
+            bypassing = false;
         }
     }
 
-    private static boolean isStillValid(Object attacker, Object target) {
-        return isAlive(attacker) && !isRemoved(attacker) && !isRemoved(target)
-                && isAttackable(target) && isAlive(target);
-    }
-
-    private static boolean isMobAttackStillValid(Object attacker, Object target) {
-        double reach = getBbWidth(attacker) * 2.0F;
-        return distanceToSqr(attacker, target) < reach * reach + getBbWidth(target);
+    private static boolean canQueue(Object attacker, Object target) {
+        return isAlive(attacker) && !isRemoved(attacker) && !isRemoved(target);
     }
 
     private static boolean hasPendingAttack(Object attacker) {
@@ -127,17 +77,8 @@ public final class LegacyPendingAttackManager {
         return false;
     }
 
-    private static boolean isMob(Object entity) {
-        return isInstance("net.minecraft.entity.MobEntity", entity);
-    }
-
     private static boolean isAlive(Object entity) {
         Object value = ENTITY_IS_ALIVE.invoke(entity);
-        return value instanceof Boolean && (Boolean) value;
-    }
-
-    private static boolean isAttackable(Object entity) {
-        Object value = ENTITY_IS_ATTACKABLE.invoke(entity);
         return value instanceof Boolean && (Boolean) value;
     }
 
@@ -146,49 +87,19 @@ public final class LegacyPendingAttackManager {
         return value instanceof Boolean && (Boolean) value;
     }
 
-    private static long getGameTime(Object level) {
-        Object value = WORLD_GAME_TIME.invoke(level);
-        return value instanceof Long ? (Long) value : 0L;
-    }
-
-    private static float getBbWidth(Object entity) {
-        Object value = ENTITY_BB_WIDTH.invoke(entity);
-        return value instanceof Float ? (Float) value : 0.0F;
-    }
-
-    private static double distanceToSqr(Object source, Object target) {
-        Object value = ENTITY_DISTANCE_TO_SQR.invoke(source, target);
-        return value instanceof Double ? (Double) value : Double.MAX_VALUE;
-    }
-
     private static int asInt(Object value) {
         return value instanceof Integer ? (Integer) value : 1;
-    }
-
-    private static boolean isInstance(String className, Object instance) {
-        try {
-            return Class.forName(className, false, LegacyPendingAttackManager.class.getClassLoader()).isInstance(instance);
-        } catch (ClassNotFoundException ignored) {
-            return false;
-        }
     }
 
     private static final class PendingAttack {
         private final Object attacker;
         private final Object target;
-        private final Object level;
-        private final long executeGameTime;
-        private final Object damageSource;
-        private final float damageAmount;
+        private final long executeTick;
 
-        private PendingAttack(Object attacker, Object target, Object level, long executeGameTime,
-                              Object damageSource, float damageAmount) {
+        private PendingAttack(Object attacker, Object target, long executeTick) {
             this.attacker = attacker;
             this.target = target;
-            this.level = level;
-            this.executeGameTime = executeGameTime;
-            this.damageSource = damageSource;
-            this.damageAmount = damageAmount;
+            this.executeTick = executeTick;
         }
     }
 
