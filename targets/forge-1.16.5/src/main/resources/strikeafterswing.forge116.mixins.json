@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "cc.sighs.strikeafterswing.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "refmap": "strikeafterswing.forge116.refmap.json",
+  "mixins": [
+    "LegacyMobAttackMixin",
+    "LegacyMinecraftServerTickMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

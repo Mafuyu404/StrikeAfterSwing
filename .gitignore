@@ -19,3 +19,9 @@ hs_err_pid*
 
 # Common working directory
 run
+
+targets/*/run/
+targets/*/.gradle/
+targets/*/build/
+common/.gradle/
+common/build/
