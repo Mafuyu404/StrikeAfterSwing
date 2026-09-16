@@ -25,3 +25,7 @@ targets/*/.gradle/
 targets/*/build/
 common/.gradle/
 common/build/
+
+# Python bytecode cache from scripts/behavior-test/
+__pycache__/
+*.pyc

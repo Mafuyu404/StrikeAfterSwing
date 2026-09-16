@@ -1,6 +1,5 @@
 buildscript {
-    
-repositories {
+    repositories {
         gradlePluginPortal()
         maven { url = 'https://maven.fabricmc.net/' }
         mavenCentral()
@@ -18,6 +17,7 @@ apply plugin: 'java'
 
 def properties = new Properties()
 file('../../gradle.properties').withInputStream { properties.load(it) }
+file('gradle.properties').withInputStream { properties.load(it) }
 properties.each { key, value -> ext.set(key.toString(), value.toString()) }
 
 group = mod_group_id
@@ -37,10 +37,6 @@ loom {
     }
 }
 
-sourceSets.main.output.dir(
-        project(':common').layout.buildDirectory.dir('classes/java/main'),
-        builtBy: ':common:classes'
-)
 repositories {
     mavenCentral()
 }
@@ -49,13 +45,12 @@ dependencies {
     minecraft "com.mojang:minecraft:${fabric_minecraft_version}"
     mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
-    implementation project(':common')
 }
 
 tasks.named('processResources', ProcessResources).configure {
     def replaceProperties = [
             minecraft_version: fabric_minecraft_version,
-            minecraft_version_range: '[1.20.1,1.20.2)',
+            minecraft_version_range: fabric_minecraft_version_range,
             fabric_loader_version: fabric_loader_version,
             mod_id: mod_id,
             mod_name: mod_name,
@@ -70,8 +65,9 @@ tasks.named('processResources', ProcessResources).configure {
     }
 }
 
-
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.release = 17
 }
+
+apply from: file('../../gradle/target-conventions/target.gradle')

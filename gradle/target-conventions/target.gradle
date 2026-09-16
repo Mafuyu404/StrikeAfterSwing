@@ -1,0 +1,21 @@
+// Applied from an individual target project, not from the aggregate root project.
+// Releasing lives in the root project (gradle/publish.gradle); this script only holds the build
+// conventions every target shares.
+
+repositories {
+    flatDir {
+        dirs layout.projectDirectory.dir('libs')
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: file('libs'), include: ['*.jar'], exclude: ['*-sources.jar', '*-javadoc.jar'])
+}
+
+// The shared core is compiled into every target: this keeps the classes a target runs in dev
+// identical to the classes in its jar. Copying common's build output into the source set instead
+// (sourceSets.main.output.dir) leaves ForgeGradle 6 dev runs without the shared classes.
+sourceSets.main.java.srcDir project(':common').file('src/main/java')
+
+// Every target shares the resources kept in common/src/main/resources.
+sourceSets.main.resources.srcDir project(':common').file('src/main/resources')

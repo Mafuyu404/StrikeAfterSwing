@@ -1,0 +1,16 @@
+# Copy this file to .github/CODEOWNERS and replace placeholders with real accounts.
+
+/common/ @core-maintainer
+/targets/forge-1.16.5/ @forge-1165-maintainer
+/targets/forge-1.20.1/ @forge-1201-maintainer
+/targets/fabric-1.20.1/ @fabric-1201-maintainer
+/targets/neoforge-1.21.1/ @neoforge-1211-maintainer
+/targets/fabric-26.1.2/ @fabric-2612-maintainer
+/build.gradle @build-maintainer
+/settings.gradle @build-maintainer
+/gradle.properties @build-maintainer
+/gradle/target-conventions/ @build-maintainer
+/scripts/ @build-maintainer
+/legacy-build/ @build-maintainer
+/docs/ @docs-maintainer
+/.github/ @build-maintainer

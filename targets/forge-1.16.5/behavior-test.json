@@ -1,0 +1,5 @@
+{
+  "_comment": "Dedicated ports so several targets can run the behaviour test at the same time.",
+  "rconPort": 25616,
+  "serverPort": 25615
+}

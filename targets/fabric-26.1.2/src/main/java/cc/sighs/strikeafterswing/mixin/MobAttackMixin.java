@@ -1,6 +1,6 @@
 package cc.sighs.strikeafterswing.mixin;
 
-import cc.sighs.strikeafterswing.Fabric2612AttackHandler;
+import cc.sighs.strikeafterswing.FabricAttackHandler;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
@@ -15,7 +15,7 @@ public abstract class MobAttackMixin {
     private void strikeafterswing$delayMobAttack(ServerLevel level, Entity target, CallbackInfoReturnable<Boolean> cir) {
         Mob attacker = (Mob) (Object) this;
         int delayTicks = ((LivingEntityAccessor) attacker).strikeafterswing$getCurrentSwingDuration();
-        if (Fabric2612AttackHandler.delayAttack(attacker, target, delayTicks)) {
+        if (FabricAttackHandler.delayAttack(attacker, target, delayTicks)) {
             cir.setReturnValue(true);
         }
     }

@@ -1,0 +1,167 @@
+// Applied from the repository root project only. Every CurseForge, Modrinth and Sighs Maven
+// release is driven from here, so one command publishes all supported loader/version jars
+// instead of releasing each target on its own.
+//
+// The jars themselves are still produced by the independent target projects, each with its own
+// JDK (8, 21 and 25). Build them first, then publish from the repository root:
+//
+//     .\gradlew.bat publishMods        # CurseForge + Modrinth, every target
+//     .\gradlew.bat publish            # Sighs Maven repository, every target
+//     .\gradlew.bat -PpublishTargets=forge-1.20.1,fabric-26.1.2 publishMods   # subset
+
+apply plugin: 'maven-publish'
+
+def modProperties = new Properties()
+file('gradle.properties').withInputStream { modProperties.load(it) }
+def modName = modProperties.getProperty('mod_name')
+def modVersion = modProperties.getProperty('mod_version')
+def modGroupId = modProperties.getProperty('mod_group_id')
+
+// Each target owns its loader and Minecraft version in its own gradle.properties, so the release
+// matrix is read from there instead of being duplicated here.
+def allReleaseUnits = (file('targets').listFiles() ?: [])
+        .findAll { it.directory && new File(it, 'build.gradle').isFile() }
+        .collect { it.name }
+        .sort()
+        .collect { target ->
+            def targetProperties = new Properties()
+            file("targets/${target}/gradle.properties").withInputStream { targetProperties.load(it) }
+            def minecraft = targetProperties.find { key, value ->
+                key.toString().endsWith('_minecraft_version')
+            }?.value?.toString()
+
+            if (minecraft == null) {
+                throw new GradleException(
+                        "Target '${target}' declares no *_minecraft_version in targets/${target}/gradle.properties")
+            }
+
+            [
+                    target   : target,
+                    key      : target.tokenize('-').collect { it.capitalize() }.join('').replaceAll('[^A-Za-z0-9]', ''),
+                    loader   : target.tokenize('-').first(),
+                    minecraft: minecraft,
+                    jar      : file("targets/${target}/build/libs/${modName}-${target}-${modVersion}.jar")
+            ]
+        }
+
+def requestedTargets = providers.gradleProperty('publishTargets').orNull
+def releaseUnits = requestedTargets == null ?
+        allReleaseUnits :
+        allReleaseUnits.findAll { requestedTargets.tokenize(',').contains(it.target) }
+
+if (requestedTargets != null) {
+    def unknown = requestedTargets.tokenize(',').findAll { requested -> allReleaseUnits.every { it.target != requested } }
+    if (!unknown.isEmpty()) {
+        throw new GradleException("Unknown publish target(s) '${unknown.join(', ')}'. " +
+                "Available targets: ${allReleaseUnits.collect { it.target }.join(', ')}")
+    }
+}
+
+def curseforgeProjectId = providers.provider { findProperty('publish_curseforge_project_id')?.toString() }
+        .orElse(providers.environmentVariable('CURSEFORGE_PROJECT_ID'))
+def modrinthProjectId = providers.provider { findProperty('publish_modrinth_project_id')?.toString() }
+        .orElse(providers.environmentVariable('MODRINTH_PROJECT_ID'))
+def curseforgeToken = providers.environmentVariable('CURSEFORGE_TOKEN')
+def modrinthToken = providers.environmentVariable('MODRINTH_TOKEN')
+
+// Publishing never builds the targets: the jar that is released must be the jar that was verified
+// with that target's own JDK.
+tasks.register('checkPublishJars') {
+    group = 'publishing'
+    description = 'Fails unless every release unit jar has already been built by its target project.'
+    doLast {
+        def missing = releaseUnits.findAll { !it.jar.isFile() }
+        if (!missing.isEmpty()) {
+            throw new GradleException('Missing release jars:\n' +
+                    missing.collect { "  ${it.jar}" }.join('\n') +
+                    '\nBuild each target with its own JDK before publishing, for example:\n' +
+                    '  .\\gradlew.bat -PallTargets=true build              # JDK 21 targets\n' +
+                    '  cd targets\\forge-1.16.5 && .\\gradlew.bat build     # JDK 8\n' +
+                    '  cd targets\\fabric-26.1.2 && .\\gradlew.bat build    # JDK 25')
+        }
+    }
+}
+
+tasks.matching { it.name.startsWith('publish') }.configureEach {
+    dependsOn tasks.named('checkPublishJars')
+}
+
+publishMods {
+    version = modVersion
+    changelog = providers.environmentVariable('PUBLISH_CHANGELOG')
+            .getOrElse('See the project changelog for details.')
+    type = STABLE
+
+    releaseUnits.each { unit ->
+        def releaseName = "${modName} ${modVersion} - ${unit.loader} ${unit.minecraft}"
+        def releaseJar = unit.jar
+
+        curseforge("curseforge${unit.key}") {
+            file = releaseJar
+            displayName = releaseName
+            modLoaders.add(unit.loader)
+            minecraftVersions.add(unit.minecraft)
+            projectId = curseforgeProjectId
+            accessToken = curseforgeToken
+            client = true
+            server = true
+        }
+
+        modrinth("modrinth${unit.key}") {
+            file = releaseJar
+            displayName = releaseName
+            modLoaders.add(unit.loader)
+            minecraftVersions.add(unit.minecraft)
+            projectId = modrinthProjectId
+            accessToken = modrinthToken
+        }
+    }
+}
+
+tasks.named('publishMods').configure {
+    doFirst {
+        def missing = [
+                'publish_curseforge_project_id (or CURSEFORGE_PROJECT_ID)': curseforgeProjectId,
+                'publish_modrinth_project_id (or MODRINTH_PROJECT_ID)'    : modrinthProjectId,
+                'CURSEFORGE_TOKEN'                                        : curseforgeToken,
+                'MODRINTH_TOKEN'                                          : modrinthToken
+        ].findAll { _, value -> !value.present || value.get().trim().isEmpty() }.keySet()
+
+        if (!missing.isEmpty()) {
+            throw new GradleException("Cannot publish mods; missing: ${missing.join(', ')}")
+        }
+    }
+}
+
+publishing {
+    publications {
+        releaseUnits.each { unit ->
+            register(unit.key, MavenPublication) {
+                groupId = modGroupId
+                artifactId = "${modName}-${unit.target}"
+                version = modVersion
+                artifact(unit.jar)
+            }
+        }
+    }
+
+    repositories {
+        def isSnapshot = modVersion.toLowerCase().contains('snapshot')
+        def publishUrl = isSnapshot ?
+                'https://maven.sighs.cc/repository/maven-snapshots/' :
+                'https://maven.sighs.cc/repository/maven-releases/'
+
+        maven {
+            name = 'remoteRepo'
+            url = uri(publishUrl)
+            credentials {
+                username = System.getenv('SIGHS_PUBLISH_USER')
+                password = System.getenv('SIGHS_PUBLISH_PASSWORD')
+            }
+        }
+    }
+}
+
+tasks.withType(GenerateModuleMetadata).configureEach {
+    enabled = false
+}

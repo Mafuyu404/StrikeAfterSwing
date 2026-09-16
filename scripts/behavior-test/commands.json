@@ -1,0 +1,25 @@
+{
+  "_comment": "命令模板，按版本覆盖时放在 targets/<name>/behavior-test.json。占位符由 behavior_test.py 填充。",
+  "rconPort": 25575,
+  "serverPort": 25565,
+  "worldSetup": [
+    "difficulty hard",
+    "gamerule doDaylightCycle false",
+    "gamerule doWeatherCycle false",
+    "gamerule doMobSpawning false",
+    "gamerule sendCommandFeedback true",
+    "time set midnight",
+    "weather clear",
+    "kill @e[type=!player]"
+  ],
+  "siteSetup": [
+    "forceload add {x} {z}",
+    "fill {padX1} {padY} {padZ1} {padX2} {padY} {padZ2} minecraft:stone",
+    "kill @e[type=!player,x={x},y={padY},z={z},distance=..16]"
+  ],
+  "spawnTarget": "summon minecraft:villager {x} {y} {z} {{Tags:[\"{targetTag}\"],NoAI:1b,PersistenceRequired:1b}}",
+  "spawnAttacker": "summon minecraft:zombie {attackerX} {y} {z} {{Tags:[\"{attackerTag}\"],PersistenceRequired:1b}}",
+  "longSwing": "effect give @e[tag={attackerTag},limit=1] minecraft:mining_fatigue 900 255 true",
+  "queryHealth": "data get entity @e[tag={tag},limit=1] Health",
+  "queryTick": "time query gametime"
+}

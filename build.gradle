@@ -1,14 +1,18 @@
+plugins {
+    id 'me.modmuss50.mod-publish-plugin' version '2.1.1'
+}
+
 def targetBuilds = [
         'forge-1.20.1'    : [directory: 'targets/forge-1.20.1', task: 'buildForge1201'],
         'fabric-1.20.1'   : [directory: 'targets/fabric-1.20.1', task: 'buildFabric1201'],
-        'neoforge-1.21.1' : [directory: 'targets/neoforge-1.21.1', task: 'buildNeoforge1211']
+        'neoforge-1.21.1' : [directory: 'targets/neoforge-1.21.1', task: 'buildNeoForge1211']
 ]
 
 def selectedTarget = providers.gradleProperty('target').orNull
-def buildAllTargets = providers.gradleProperty('allTargets').map { value -> value.toBoolean() }.orElse(false)
+def buildAllTargets = providers.gradleProperty('allTargets').map { it.toBoolean() }.orElse(false)
 
 if (selectedTarget != null && !targetBuilds.containsKey(selectedTarget)) {
-    throw new GradleException("Unknown buildable target '${selectedTarget}'. Available targets: ${targetBuilds.keySet().join(', ')}")
+    throw new GradleException("Unknown target '${selectedTarget}'. Available targets: ${targetBuilds.keySet().join(', ')}")
 }
 
 targetBuilds.each { targetName, targetBuild ->
@@ -22,7 +26,7 @@ targetBuilds.each { targetName, targetBuild ->
 
 tasks.register('build') {
     group = 'build'
-    description = 'Builds common and an optionally selected buildable target.'
+    description = 'Builds common and an optionally selected JDK 21 target.'
     dependsOn ':common:build'
 
     if (selectedTarget != null) {
@@ -35,3 +39,6 @@ tasks.register('build') {
         }
     }
 }
+
+// Every CurseForge, Modrinth and Maven release for all targets is configured in one place.
+apply from: 'gradle/publish.gradle'

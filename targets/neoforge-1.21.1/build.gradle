@@ -5,6 +5,7 @@ plugins {
 
 def properties = new Properties()
 file('../../gradle.properties').withInputStream { properties.load(it) }
+file('gradle.properties').withInputStream { properties.load(it) }
 properties.each { key, value -> ext.set(key.toString(), value.toString()) }
 
 group = mod_group_id
@@ -19,7 +20,7 @@ java {
 }
 
 neoForge {
-    version = neo_version
+    version = neoforge_121_version
 
     runs {
         client {
@@ -38,17 +39,13 @@ neoForge {
     }
 }
 
-dependencies {
-    implementation project(':common')
-}
-
 tasks.named('processResources', ProcessResources).configure {
     def replaceProperties = [
-            minecraft_version: neo_minecraft_version,
-            minecraft_version_range: '[1.21.1,1.21.2)',
-            neo_version: neo_version,
-            neo_version_range: neo_version_range,
-            loader_version_range: neo_loader_version_range,
+            minecraft_version: neoforge_121_minecraft_version,
+            minecraft_version_range: neoforge_121_minecraft_version_range,
+            neo_version: neoforge_121_version,
+            neo_version_range: neoforge_121_version_range,
+            loader_version_range: neoforge_121_loader_version_range,
             mod_id: mod_id,
             mod_name: mod_name,
             mod_license: mod_license,
@@ -62,10 +59,8 @@ tasks.named('processResources', ProcessResources).configure {
     }
 }
 
-tasks.named('jar', Jar).configure {
-    from project(':common').sourceSets.main.output
-}
-
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
+
+apply from: file('../../gradle/target-conventions/target.gradle')

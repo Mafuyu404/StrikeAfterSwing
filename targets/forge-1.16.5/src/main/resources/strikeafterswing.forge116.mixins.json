@@ -5,8 +5,9 @@
   "compatibilityLevel": "JAVA_8",
   "refmap": "strikeafterswing.forge116.refmap.json",
   "mixins": [
-    "LegacyMobAttackMixin",
-    "LegacyMinecraftServerTickMixin"
+    "LivingEntityAccessor",
+    "MobAttackMixin",
+    "MinecraftServerTickMixin"
   ],
   "injectors": {
     "defaultRequire": 1

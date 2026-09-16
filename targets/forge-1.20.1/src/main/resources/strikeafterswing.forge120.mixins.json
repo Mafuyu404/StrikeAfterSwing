@@ -3,7 +3,7 @@
   "minVersion": "0.8",
   "package": "cc.sighs.strikeafterswing.mixin",
   "compatibilityLevel": "JAVA_17",
-  "refmap": "strikeafterswing.refmap.json",
+  "refmap": "strikeafterswing.forge120.refmap.json",
   "mixins": [
     "LivingEntityAccessor",
     "MobAttackMixin",

@@ -1,6 +1,5 @@
 buildscript {
-    
-repositories {
+    repositories {
         maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
         mavenCentral()
     }
@@ -19,6 +18,7 @@ apply plugin: 'org.spongepowered.mixin'
 
 def properties = new Properties()
 file('../../gradle.properties').withInputStream { properties.load(it) }
+file('gradle.properties').withInputStream { properties.load(it) }
 properties.each { key, value -> ext.set(key.toString(), value.toString()) }
 
 group = mod_group_id
@@ -33,7 +33,7 @@ java {
 }
 
 minecraft {
-    mappings channel: mapping_channel, version: mapping_version
+    mappings channel: forge_mapping_channel, version: forge_mapping_version
     copyIdeResources = true
 
     runs {
@@ -53,31 +53,26 @@ minecraft {
 }
 
 mixin {
-    add sourceSets.main, "${mod_id}.refmap.json"
+    add sourceSets.main, "${mod_id}.forge120.refmap.json"
     config "${mod_id}.forge120.mixins.json"
 }
 
-sourceSets.main.output.dir(
-        project(':common').layout.buildDirectory.dir('classes/java/main'),
-        builtBy: ':common:classes'
-)
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-    implementation project(':common')
+    minecraft "net.minecraftforge:forge:${forge_minecraft_version}-${forge_version}"
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }
 
 tasks.named('processResources', ProcessResources).configure {
     def replaceProperties = [
-            minecraft_version: minecraft_version,
-            minecraft_version_range: '[1.20.1,1.20.2)',
+            minecraft_version: forge_minecraft_version,
+            minecraft_version_range: forge_minecraft_version_range,
             forge_version: forge_version,
             forge_version_range: forge_version_range,
-            loader_version_range: loader_version_range,
+            loader_version_range: forge_loader_version_range,
             mod_id: mod_id,
             mod_name: mod_name,
             mod_license: mod_license,
@@ -101,3 +96,5 @@ tasks.named('jar', Jar).configure {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
+
+apply from: file('../../gradle/target-conventions/target.gradle')

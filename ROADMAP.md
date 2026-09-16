@@ -2,7 +2,7 @@
 
 ## 完成状态
 
-重构已完成。项目现在使用“可编辑的共享核心源码 + 独立加载器/版本工程”结构，根目录不再保留会混合加载器和 Minecraft 版本的可构建源码。
+重构已完成。项目现在使用 SighsTemple 框架的“可编辑的共享核心源码 + 独立加载器/版本工程”结构，根目录不再保留会混合加载器和 Minecraft 版本的可构建源码。
 
 ```text
 StrikeAfterSwing/
@@ -13,8 +13,14 @@ StrikeAfterSwing/
     fabric-1.20.1/                      独立 Fabric 1.20.1 Gradle 工程
     neoforge-1.21.1/                    独立 NeoForge 1.21.1 Gradle 工程
     fabric-26.1.2/                      独立 Fabric 26.1.2 Gradle 工程
+  gradle/target-conventions/            target 共用的构建约定（libs/ 与共享资源）
+  gradle/publish.gradle                 根项目唯一的发布配置（全部 target）
+  scripts/                              target 发现与构建脚本（CI 与本地共用）
+  .github/workflows/                    由 ci.properties 驱动的 common 验证工作流
+  docs/                                 维护工作流、CI 说明、发布与版本差异参考
+  AGENT.md                              开发与迁移规范
   legacy-build/                         迁移前构建脚本归档
-  build.gradle                          现代 JDK 21 target 的可选聚合入口
+  build.gradle                          现代 JDK 21 target 的可选聚合入口 + 发布脚本挂载
   settings.gradle                       根项目默认仅包含 common
 ```
 
@@ -26,6 +32,8 @@ StrikeAfterSwing/
 4. `common` 保持 Java 8 字节码兼容，不能依赖 Forge、NeoForge、Fabric、Minecraft 或 Mixin API。
 5. target 自己维护入口、Mixin、accessor、metadata、资源和 Minecraft API 适配。
 6. 每个发布 jar 对应一个加载器和一个 Minecraft 版本，并包含所需的 `common` class。
+7. 共享模组信息只放根 `gradle.properties`；Minecraft、加载器、映射与版本范围只放该 target 自己的 `gradle.properties`。
+8. 每个 target 都必须提供 `ci.properties` 与 `gradlew.bat`，`scripts/discover-targets.ps1` 才能把它纳入 CI 矩阵。
 
 target 的 `settings.gradle` 使用如下映射：
 
@@ -94,12 +102,25 @@ Fabric 26.1.2 使用 Fabric Loom `1.17-SNAPSHOT` 的无开发映射流程和 Gra
 - [x] 迁移前构建脚本保留在 `legacy-build/` 作为归档参考。
 - [x] README 已更新为当前 target 目录、JDK 要求和实际构建命令。
 
+## 框架约定套用
+
+- [x] 版本、加载器、映射与版本范围参数已从根 `gradle.properties` 下沉到各 target 自己的 `gradle.properties`。
+- [x] 每个 target 新增 `ci.properties`、`libs/`，并统一应用 `gradle/target-conventions/target.gradle`。
+- [x] CI 改为由 `ci.properties` 驱动的自动发现矩阵，不再硬编码 target 列表。
+- [x] 补齐 `AGENT.md`、`docs/`、`scripts/`、`.github/` 与 `.gitattributes`。
+- [x] 修正 Forge 1.20.1 的 `mods.toml` 依赖范围：加载器与 Forge 版本范围由过期的 `[36,)` 改为 `[47,)`。
+- [x] 发布上移到根项目 `gradle/publish.gradle`：一次命令发布全部 target 到 CurseForge、Modrinth 与 Sighs Maven，target 不再各自发布。
+- [x] `targets/forge-1.16.5` 现在也能发布：JDK 8 只约束它的构建，发布由根项目的 JDK 21 执行。
+- [x] 5 个 target 的实现统一为标准写法：全部改为编译期类型绑定与 `@Invoker` 访问器，`forge-1.16.5` 移除了反射层、`@Pseudo`、SRG 名与重复 tick 注入点，`fabric-26.1.2` 去掉 `require = 0`，`forge-1.20.1` 的 refmap 命名与 mixin 配置对齐；规范写入 `AGENT.md` 的「Target 实现规范」。
+- [ ] 根目录遗留的 `fabric-build/` 是 split 之前的死工程（仍引用已删除的根 `src/`），待确认后删除。
+
 ## 后续维护规则
 
 1. 新增 Minecraft 版本时新建 `targets/<loader>-<mc-version>/`，不要向现有 target 加运行时版本判断或互斥 Mixin。
 2. 新 target 在合入前必须独立 `clean build`，并检查最终 jar 的 metadata、Mixin JSON 和 `common` class。
-3. 只有 JDK 与 Gradle 要求能够统一的 target 才可加入根 `-PallTargets=true`；其余 target 在 CI 中作为独立 job 构建。
-4. `legacy-build/` 只供历史排查，不得作为日常构建入口。
+3. 新 target 必须带上 `ci.properties`、`libs/` 和 `gradlew.bat`，并出现在 `.\scripts\discover-targets.ps1` 的输出中。
+4. 只有 JDK 与 Gradle 要求能够统一的 target 才可加入根 `-PallTargets=true`；其余 target 在 CI 中作为独立 job 构建。
+5. `legacy-build/` 只供历史排查，不得作为日常构建入口。
 
 ## Goal Objective
 
