@@ -1,0 +1,11 @@
+== behavior test driver: fabric-1.20.1
+   JDK        : D:/program/jdk-21
+   server log : D:\work\StrikeAfterSwing\targets\fabric-1.20.1\run\behavior-test-server.log
+    merged override: targets/fabric-1.20.1/behavior-test.json
+== behaviour test: fabric-1.20.1
+    rcon port 25636, window 1000 ticks, poll timeout 300s
+
+    RESULT: FAIL - deferral is only -25 ticks (baseline 114, long-swing 89); the mod is not deferring by the attacker swing duration
+    server stop requested
+
+   RESULT: FAIL (fabric-1.20.1) - see D:\work\StrikeAfterSwing\targets\fabric-1.20.1\run\behavior-test-server.log

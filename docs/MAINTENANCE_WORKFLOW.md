@@ -15,10 +15,14 @@
 | --- | --- | --- | --- |
 | `common/` | Core Maintainer | 共享业务逻辑、纯 Java 测试、稳定接口 | 至少一名受影响 target 维护者 |
 | `targets/forge-1.16.5/` | Forge 1.16.5 Maintainer | Forge 入口、事件、资源、Mixin、适配器；Gradle 6.9.4 + JDK 8 工具链 | Core Maintainer 仅在 common 合约变化时参与 |
+| `targets/forge-1.18.2/` | Forge 1.18.2 Maintainer | Forge 入口、事件、资源、Mixin、适配器；JDK 17 工具链 | 同上 |
+| `targets/forge-1.19.2/` | Forge 1.19.2 Maintainer | Forge 入口、事件、资源、Mixin、适配器；JDK 17 工具链 | 同上 |
 | `targets/forge-1.20.1/` | Forge 1.20.1 Maintainer | Forge 入口、事件、资源、Mixin、适配器 | 同上 |
 | `targets/fabric-1.20.1/` | Fabric 1.20.1 Maintainer | Fabric entrypoint、callback、资源、Mixin、适配器 | 同上 |
+| `targets/fabric-1.21.1/` | Fabric 1.21.1 Maintainer | Fabric entrypoint、callback、资源、Mixin、适配器 | 同上 |
 | `targets/neoforge-1.21.1/` | NeoForge 1.21.1 Maintainer | NeoForge 入口、事件、资源、Mixin、适配器 | 同上 |
 | `targets/fabric-26.1.2/` | Fabric 26.1.2 Maintainer | Java 25、26.1 API、资源、渲染和适配器 | 同上 |
+| `targets/neoforge-26.1.2/` | NeoForge 26.1.2 Maintainer | Java 25、26.1 API、资源、渲染和适配器 | 同上 |
 | 根 Gradle、CI、`docs/` | Build / Release Maintainer | 聚合入口、CI 矩阵、维护文档 | 受影响 target 维护者 |
 
 一个人可以承担多个角色，但评审规则仍按路径执行。实际 GitHub 账号映射写入 `.github/CODEOWNERS`；仓库提供 `.github/CODEOWNERS.example` 作为起点。
@@ -71,10 +75,14 @@
 
 ```text
 target/forge-1.16.5/<topic>
+target/forge-1.18.2/<topic>
+target/forge-1.19.2/<topic>
 target/forge-1.20.1/<topic>
 target/fabric-1.20.1/<topic>
+target/fabric-1.21.1/<topic>
 target/neoforge-1.21.1/<topic>
 target/fabric-26.1.2/<topic>
+target/neoforge-26.1.2/<topic>
 common/<topic>
 build/<topic>
 docs/<topic>
@@ -84,10 +92,14 @@ docs/<topic>
 
 ```text
 forge-1.16.5: fix legacy Mixin refmap generation
+forge-1.18.2: fix block entity registration
+forge-1.19.2: fix tool tier lookup
 forge-1.20.1: fix entity renderer registration
 fabric-1.20.1: add client packet adapter
+fabric-1.21.1: update mixin config
 neoforge-1.21.1: update data generation
 fabric-26.1.2: migrate item template handling
+neoforge-26.1.2: align with 26.1 API
 common: expose render-plan hook
 build: update fabric-26.1.2 wrapper
 docs: clarify release matrix
@@ -154,15 +166,19 @@ targets/<name>/.../client/
 | Job | 目录 | Gradle JVM | 必须执行 |
 | --- | --- | --- | --- |
 | Forge 1.16.5 | `targets/forge-1.16.5` | JDK 8 | `./gradlew clean build` |
+| Forge 1.18.2 | `targets/forge-1.18.2` | JDK 17 | `./gradlew clean build` |
+| Forge 1.19.2 | `targets/forge-1.19.2` | JDK 17 | `./gradlew clean build` |
 | Forge 1.20.1 | `targets/forge-1.20.1` | JDK 21 | `./gradlew clean build` |
 | Fabric 1.20.1 | `targets/fabric-1.20.1` | JDK 21 | `./gradlew clean build` |
+| Fabric 1.21.1 | `targets/fabric-1.21.1` | JDK 21 | `./gradlew clean build` |
 | NeoForge 1.21.1 | `targets/neoforge-1.21.1` | JDK 21 | `./gradlew clean build` |
 | Fabric 26.1.2 | `targets/fabric-26.1.2` | JDK 25 | `./gradlew clean build` |
+| NeoForge 26.1.2 | `targets/neoforge-26.1.2` | JDK 25 | `./gradlew clean build` |
 | 行为测试（运行期） | `scripts/behavior-test/` | 各 target `ci.properties` 声明的 JDK | `.\scripts\behavior-test\behavior-test.ps1 -Target <name>` |
 
 补充规则：
 
-- 根 `-PallTargets=true build` 仅覆盖可由同一个 JDK 21 同时构建的三个 target：`forge-1.20.1`、`fabric-1.20.1`、`neoforge-1.21.1`。它不是 `forge-1.16.5`（Gradle 6.9.4 + JDK 8）和 `fabric-26.1.2`（Gradle 9.5.1 + JDK 25）的验证替代品，这两个 target 必须各自用 wrapper 独立构建。
+- 根 `-PallTargets=true build` 仅覆盖可由同一个 JDK 21 同时构建的四个 target：`forge-1.20.1`、`fabric-1.20.1`、`fabric-1.21.1`、`neoforge-1.21.1`。它不是 `forge-1.16.5`（Gradle 6.9.4 + JDK 8）、`forge-1.18.2` / `forge-1.19.2`（JDK 17）和 `fabric-26.1.2`（Gradle 9.5.1 + JDK 25）/ `neoforge-26.1.2`（JDK 25）的验证替代品，这些 target 必须各自用 wrapper 独立构建。
 - 任何改动 `common/` 的 PR，至少触发所有当前支持 target 的 build job。
 - 任何改动一个 target 的资源、Mixin 或 metadata 的 PR，至少检查最终 jar 是否包含对应 metadata、配置文件和 common class。
 - 构建成功不代替运行验证。涉及事件、网络、Mixin、注册、渲染或数据包时，应在 PR 中记录 client、dedicated server、reload 或 data generation 的实际验证范围。
@@ -187,9 +203,9 @@ targets/*/behavior-test.json
 执行顺序：
 
 1. `common-tests` 使用 JDK 21 执行 `common` 的 `clean test`。
-2. 五个 target job 并行执行各自 wrapper 的 `clean build`。`build` 包含 target 和 common 的测试任务。
+2. 每个 target job 并行执行各自 wrapper 的 `clean build`。`build` 包含 target 和 common 的测试任务。
 3. 每个 target job 在构建成功后执行 `.\scripts\behavior-test\behavior-test.ps1 -Target <matrix.target>`。驱动器自己准备 `targets/<name>/run/`、以 RCON 起服、跑断言并停服，`JAVA_HOME` 由矩阵的 JDK 提供，Python 用 windows-latest 自带的版本。行为测试失败会让该 target job 失败。
-4. 每个 target 使用 `ci.properties` 中声明的 JDK：Forge 1.20.1、Fabric 1.20.1、NeoForge 1.21.1 使用 JDK 21；Forge 1.16.5 使用 JDK 8；Fabric 26.1.2 使用 JDK 25。
+4. 每个 target 使用 `ci.properties` 中声明的 JDK：Forge 1.20.1、Fabric 1.20.1、Fabric 1.21.1、NeoForge 1.21.1 使用 JDK 21；Forge 1.16.5 使用 JDK 8；Forge 1.18.2、Forge 1.19.2 使用 JDK 17；Fabric 26.1.2、NeoForge 26.1.2 使用 JDK 25。
 5. 成功或失败时上传已生成的 `build/libs/*.jar`，便于检查发布物。
 
 `scripts/build-target.ps1` 对 target build 最多重试三次，专门处理首次解析 mappings、NeoForm 或 Maven 时的短暂网络失败。编译错误、测试错误和持续依赖错误仍会使 job 失败。行为测试不做重试：它跑在真实服务器上，重试会掩盖真实的运行期回归；失败时看 job 输出和 `targets/<name>/run/behavior-test-server.log`。
@@ -199,10 +215,14 @@ targets/*/behavior-test.json
 ```text
 Common Unit Tests
 forge-1.16.5 (JDK 8)
+forge-1.18.2 (JDK 17)
+forge-1.19.2 (JDK 17)
 forge-1.20.1 (JDK 21)
 fabric-1.20.1 (JDK 21)
+fabric-1.21.1 (JDK 21)
 neoforge-1.21.1 (JDK 21)
 fabric-26.1.2 (JDK 25)
+neoforge-26.1.2 (JDK 25)
 ```
 
 target-only 的快速验证工作流可以后续按同一模式增加，但不得替代 common 的全矩阵工作流。
@@ -220,7 +240,7 @@ target-only 的快速验证工作流可以后续按同一模式增加，但不�
 评审者检查：
 
 - 是否将平台 API 泄漏进 `common`。
-- 是否把 1.16.5、1.20.1、1.21.1、26.1 的资源、Mixin 或客户端代码混入同一 target。
+- 是否把 1.16.5、1.18.2、1.19.2、1.20.1、1.21.1、26.1 的资源、Mixin 或客户端代码混入同一 target。
 - 是否更新了所有受影响的桥接实现。
 - 是否因工具链不兼容而错误使用根聚合替代独立构建。
 - 是否新增了重复 class、运行时版本判断或无说明的反射兼容层。
@@ -237,10 +257,14 @@ target-only 的快速验证工作流可以后续按同一模式增加，但不�
 
 ```text
 StrikeAfterSwing-forge-1.16.5-<mod_version>.jar
+StrikeAfterSwing-forge-1.18.2-<mod_version>.jar
+StrikeAfterSwing-forge-1.19.2-<mod_version>.jar
 StrikeAfterSwing-forge-1.20.1-<mod_version>.jar
 StrikeAfterSwing-fabric-1.20.1-<mod_version>.jar
+StrikeAfterSwing-fabric-1.21.1-<mod_version>.jar
 StrikeAfterSwing-neoforge-1.21.1-<mod_version>.jar
 StrikeAfterSwing-fabric-26.1.2-<mod_version>.jar
+StrikeAfterSwing-neoforge-26.1.2-<mod_version>.jar
 ```
 
 不要发布混合 loader 的 universal jar。
@@ -268,7 +292,7 @@ Maven 坐标由根脚本按 target 生成：publication 名形如 `Forge1201`、
 5. 在仓库根执行 `publishMods` / `publish`，必要时用 `-PpublishTargets=` 限定本次涉及的 target。
 6. 发布说明按 target 列出新增、修复、已知限制和不包含的版本。
 
-发布不会触发构建：`checkPublishJars` 会在每个发布任务前校验所有待发布 jar 是否已存在，缺失时失败并打印每个缺失路径和对应的构建命令，因此第 2 步必须先完成。根 `-PallTargets=true build` 只覆盖三个 JDK 21 的 target：`forge-1.20.1`、`fabric-1.20.1`、`neoforge-1.21.1`；`forge-1.16.5`（JDK 8）和 `fabric-26.1.2`（JDK 25）必须各自用 wrapper 构建。`forge-1.16.5` 与其他 target 一样可以发布到 CurseForge/Modrinth，JDK 8 只是构建限制，发布本身由根项目的 JDK 21 完成。
+发布不会触发构建：`checkPublishJars` 会在每个发布任务前校验所有待发布 jar 是否已存在，缺失时失败并打印每个缺失路径和对应的构建命令，因此第 2 步必须先完成。根 `-PallTargets=true build` 只覆盖四个 JDK 21 的 target：`forge-1.20.1`、`fabric-1.20.1`、`fabric-1.21.1`、`neoforge-1.21.1`；`forge-1.16.5`（JDK 8）、`forge-1.18.2` / `forge-1.19.2`（JDK 17）和 `fabric-26.1.2` / `neoforge-26.1.2`（JDK 25）必须各自用 wrapper 构建。`forge-1.16.5` 与其他 target 一样可以发布到 CurseForge/Modrinth，JDK 8 只是构建限制，发布本身由根项目的 JDK 21 完成。
 
 版本可以不同步发布。某个 target 未准备好时，不应阻止其他 target 发布，此时用 `-PpublishTargets=` 只发布已就绪的 target，但发布说明必须准确表达覆盖范围。
 

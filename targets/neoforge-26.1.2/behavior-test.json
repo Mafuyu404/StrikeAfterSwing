@@ -1,0 +1,16 @@
+{
+  "_comment": "Pinned ports so several targets can run the behaviour test at the same time.",
+  "_comment_gamerules": "MC 26.1.2 renamed the gamerules to snake_case ids (doDaylightCycle -> advance_time, doWeatherCycle -> advance_weather, doMobSpawning -> spawn_monsters, sendCommandFeedback -> send_command_feedback), so worldSetup has to be overridden in full (the harness replaces list values instead of merging them).",
+  "rconPort": 25696,
+  "serverPort": 25695,
+  "worldSetup": [
+    "difficulty hard",
+    "gamerule advance_time false",
+    "gamerule advance_weather false",
+    "gamerule spawn_monsters false",
+    "gamerule send_command_feedback true",
+    "time set midnight",
+    "weather clear",
+    "kill @e[type=!player]"
+  ]
+}

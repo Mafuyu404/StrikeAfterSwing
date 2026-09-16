@@ -9,10 +9,14 @@ StrikeAfterSwing/
   common/                               无加载器依赖的共享 Java 核心
   targets/
     forge-1.16.5/                       独立 Forge 1.16.5 Gradle 工程
+    forge-1.18.2/                       独立 Forge 1.18.2 Gradle 工程
+    forge-1.19.2/                       独立 Forge 1.19.2 Gradle 工程
     forge-1.20.1/                       独立 Forge 1.20.1 Gradle 工程
     fabric-1.20.1/                      独立 Fabric 1.20.1 Gradle 工程
+    fabric-1.21.1/                      独立 Fabric 1.21.1 Gradle 工程
     neoforge-1.21.1/                    独立 NeoForge 1.21.1 Gradle 工程
     fabric-26.1.2/                      独立 Fabric 26.1.2 Gradle 工程
+    neoforge-26.1.2/                    独立 NeoForge 26.1.2 Gradle 工程
   gradle/target-conventions/            target 共用的构建约定（libs/ 与共享资源）
   gradle/publish.gradle                 根项目唯一的发布配置（全部 target）
   scripts/                              target 发现与构建脚本（CI 与本地共用）
@@ -84,16 +88,17 @@ Fabric 26.1.2 使用 Fabric Loom `1.17-SNAPSHOT` 的无开发映射流程和 Gra
 
 ## 根项目聚合
 
-根项目默认只包含 `common`。使用 JDK 21 时，可以显式代理三个 JDK 21 的现代 target：
+根项目默认只包含 `common`。使用 JDK 21 时，可以显式代理四个 JDK 21 的现代 target：
 
 ```powershell
 .\gradlew.bat '-Ptarget=forge-1.20.1' build
 .\gradlew.bat '-Ptarget=fabric-1.20.1' build
+.\gradlew.bat '-Ptarget=fabric-1.21.1' build
 .\gradlew.bat '-Ptarget=neoforge-1.21.1' build
 .\gradlew.bat -PallTargets=true clean build
 ```
 
-`-PallTargets=true` 已验证通过。Forge 1.16.5 和 Fabric 26.1.2 分别需要 JDK 8 与 JDK 25，必须通过自己的 wrapper 单独构建，不能放入根项目的同一次 Gradle invocation。
+`-PallTargets=true` 覆盖四个 JDK 21 的 target。Forge 1.16.5（JDK 8）、Forge 1.18.2 与 Forge 1.19.2（JDK 17）、Fabric 26.1.2 与 NeoForge 26.1.2（JDK 25）必须通过自己的 wrapper 单独构建，不能放入根项目的同一次 Gradle invocation。
 
 ## 已完成清理
 

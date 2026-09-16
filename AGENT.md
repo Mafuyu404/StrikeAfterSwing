@@ -40,14 +40,14 @@ gradle/publish.gradle           根项目唯一的发布配置（覆盖全部 ta
 
 ## Target 实现规范
 
-5 个 target 的实现逐行等价，只有类型名和平台调用签名不同。新增或修改 target 时必须保持一致：
+9 个 target 的实现逐行等价，只有类型名和平台调用签名不同。新增或修改 target 时必须保持一致：
 
 - `cc.sighs.strikeafterswing.<Loader>AttackHandler`：静态 `PendingAttackManager<Mob, Entity>` + 匿名 `AttackBridge`，只暴露 `delayAttack` 与 `tick`；不要版本后缀，不要 `Legacy` 前缀。
 - `mixin/MobAttackMixin`：`@Mixin(Mob.class)` + `@Inject(method = "doHurtTarget", at = @At("HEAD"), cancellable = true)`，方法体只做「读挥击时长 → `delayAttack` → 命中则 `cir.setReturnValue(true)`」。
 - `mixin/MinecraftServerTickMixin`：只注入一个点，`@Inject(method = "tickServer", at = @At("TAIL"))`。
 - `mixin/LivingEntityAccessor`：用 `@Invoker("getCurrentSwingDuration")` 访问器，不要反射。
 - 禁止 `remap = false`、`@Pseudo`、`@Coerce`、`require = 0`、SRG/混淆名（`func_*`、`field_*`、`method_*`）、反射和重复的 tick 注入点。注入点写运行时真实名称，跨命名空间映射交给 refmap。
-- Mixin 配置：`required: true`、`injectors.defaultRequire: 1`、`compatibilityLevel` 与该 target 的 JDK 一致；需要 refmap 的平台写 `"refmap": "<mod_id>.<loader><version>.refmap.json"`，并与 `build.gradle` 中的 refmap 声明一致；1.20.5 及以后（`neoforge-1.21.1`、`fabric-26.1.2`）不写 refmap。
+- Mixin 配置：`required: true`、`injectors.defaultRequire: 1`、`compatibilityLevel` 与该 target 的 JDK 一致；写 `"refmap": "<mod_id>.<loader><version>.refmap.json"` 时必须与 `build.gradle` 中的 refmap 声明一致。**需要 refmap 的平台**：Forge 全部（1.16.5/1.18.2/1.19.2/1.20.1，运行期是 SRG）以及 Fabric 1.20.x/1.21.x（运行期是 intermediary）。**不需要 refmap**：NeoForge 1.20.5 及以后（`neoforge-1.21.1`、`neoforge-26.1.2`）与 Fabric 26.x（`fabric-26.1.2`，运行期即官方名）。
 - 只有平台 API 真的不同（如 26.1.2 的 `doHurtTarget(ServerLevel, Entity)`、1.16.5 的 `removed` 字段）才允许出现差异，且差异只写在对应 target 里，不得引入运行时版本判断。
 
 ## 日常开发
@@ -70,12 +70,16 @@ cd targets\forge-1.20.1
 | Target | Gradle JVM |
 | --- | --- |
 | `forge-1.16.5` | JDK 8 |
+| `forge-1.18.2` | JDK 17 |
+| `forge-1.19.2` | JDK 17 |
 | `forge-1.20.1` | JDK 21 |
 | `fabric-1.20.1` | JDK 21 |
+| `fabric-1.21.1` | JDK 21 |
 | `neoforge-1.21.1` | JDK 21 |
 | `fabric-26.1.2` | JDK 25 |
+| `neoforge-26.1.2` | JDK 25 |
 
-根项目的 `-PallTargets=true build` 只覆盖前三个 JDK 21 target，不能替代 `forge-1.16.5` 与 `fabric-26.1.2` 的独立构建。
+根项目的 `-PallTargets=true build` 只覆盖四个 JDK 21 target（`forge-1.20.1`、`fabric-1.20.1`、`fabric-1.21.1`、`neoforge-1.21.1`），不能替代 `forge-1.16.5`（JDK 8）、`forge-1.18.2` 与 `forge-1.19.2`（JDK 17）、`fabric-26.1.2` 与 `neoforge-26.1.2`（JDK 25）的独立构建。
 
 ### 发布
 
@@ -85,7 +89,10 @@ cd targets\forge-1.20.1
 # 1. 先用各 target 自己的 JDK 构建（发布不会触发构建）
 .\gradlew.bat -PallTargets=true build
 cd targets\forge-1.16.5; .\gradlew.bat build; cd ..\..
+cd targets\forge-1.18.2; .\gradlew.bat build; cd ..\..
+cd targets\forge-1.19.2; .\gradlew.bat build; cd ..\..
 cd targets\fabric-26.1.2; .\gradlew.bat build; cd ..\..
+cd targets\neoforge-26.1.2; .\gradlew.bat build; cd ..\..
 
 # 2. 回到仓库根发布全部版本
 .\gradlew.bat publishMods      # CurseForge + Modrinth

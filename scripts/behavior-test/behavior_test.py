@@ -5,8 +5,10 @@ The mod defers ``Mob#doHurtTarget`` by the attacker's current swing duration. Th
 test measures that deferral on a live dedicated server instead of only checking
 that the mixins were applied.
 
-Two identical arenas are set up far apart: each holds one immobile villager and one
-zombie standing next to it, so the AI attacks as soon as it acquires the target.
+Two identical arenas are set up far apart, each holding one immobile villager and one
+zombie standing next to it. The zombies are spawned first and the long-swing effect is
+applied while no villager exists yet, so no attack can be queued with the vanilla swing
+duration; the villagers then appear and the AI attacks as soon as it acquires them.
 
 * baseline arena: the zombie's swing duration is the vanilla 6 ticks.
 * long-swing arena: the zombie gets Mining Fatigue at amplifier 255, which pushes
@@ -26,6 +28,7 @@ identical for every target.
 import argparse
 import json
 import os
+import re
 import sys
 import time
 
@@ -118,19 +121,15 @@ def read_health(connection, template, tag):
     return rcon.parse_number(response)
 
 
-def wait_until_selectable(connection, sites, assertions):
-    """Waits until every spawned mob can be found by a tag selector.
+def wait_until_selectable(connection, tags, assertions):
+    """Waits until every given tag can be found by a selector.
 
     A freshly summoned entity only becomes visible to selectors once its chunk status
     has settled, which can lag the summon by about a second on a server that just
-    started. Measuring before that makes the first commands fail with
-    "No entity was found" even though the mobs exist (and do attack a moment later).
+    started. Acting before that makes commands fail with "No entity was found" even
+    though the mobs exist (and do attack a moment later).
     """
-    pending = []
-    for state in sites:
-        pending.append(state['context']['targetTag'])
-        pending.append(state['context']['attackerTag'])
-
+    pending = list(tags)
     deadline = time.time() + assertions['visibilityTimeoutSeconds']
     while pending and time.time() < deadline:
         still_hidden = []
@@ -151,6 +150,17 @@ def measure(connection, settings, assertions):
     for command in settings['worldSetup']:
         require_command(connection, command)
 
+    # A starved server (heavy parallel builds on a developer machine) still counts
+    # ticks correctly, but everything runs so slowly that the arenas drift apart and
+    # the measurement becomes meaningless. Refuse to report numbers from such a run.
+    tick_before = read_tick(connection, settings['queryTick'])
+    time.sleep(3)
+    ticks_in_three_seconds = read_tick(connection, settings['queryTick']) - tick_before
+    if ticks_in_three_seconds < 15:
+        raise TestFailure(
+            'server is starved or paused: only %d ticks in 3s (need 15); re-run without '
+            'other heavy jobs running' % ticks_in_three_seconds)
+
     sites = []
     for site in SITES:
         context = context_for(site)
@@ -166,17 +176,42 @@ def measure(connection, settings, assertions):
 
         for command in settings['siteSetup']:
             require_command(connection, expand(command, context))
-        require_command(connection, expand(settings['spawnTarget'], context))
+
         require_command(connection, expand(settings['spawnAttacker'], context))
 
-    wait_until_selectable(connection, sites, assertions)
-
-    start_tick = read_tick(connection, settings['queryTick'])
+    # Wait until the attackers are selectable before touching them, then arm the
+    # long-swing arena. No villager exists yet and a zombie without a target cannot
+    # attack, so nothing can be queued with the vanilla swing duration. Never arm
+    # through "data merge": that round-trips the entity NBT and the effect level is
+    # stored as a signed byte, so 255 comes back as 0.
+    wait_until_selectable(connection,
+                          [state['context']['attackerTag'] for state in sites],
+                          assertions)
 
     for state in sites:
         if state['site']['longSwing']:
             require_command(connection, expand(settings['longSwing'], state['context']),
                             allow_empty=False)
+            # Fail loudly when the arming did not take: an attacker without the effect
+            # lands its hit together with the baseline one, which is easy to mistake
+            # for a mod problem. Effect levels are stored as signed bytes, so the
+            # maximum level reads back as -1.
+            response = connection.command(
+                expand(settings['queryEffects'], state['context']))
+            levels = [int(level) & 0xFF for level in
+                      re.findall(r'(?i)amplifier:?\s*(-?\d+)', response)]
+            if not levels or max(levels) < 200:
+                raise TestFailure(
+                    'long-swing attacker carries no maximum-strength effect (levels: %s)'
+                    % (levels or 'none'))
+
+    start_tick = read_tick(connection, settings['queryTick'])
+
+    for state in sites:
+        require_command(connection, expand(settings['spawnTarget'], state['context']))
+    wait_until_selectable(connection,
+                          [state['context']['targetTag'] for state in sites],
+                          assertions)
 
     deadline = time.time() + assertions['pollTimeoutSeconds']
     while time.time() < deadline:

@@ -9,7 +9,7 @@ The release matrix is derived from the repository, so no list has to be maintain
 - Minecraft version is the single `*_minecraft_version` property in that target's own `gradle.properties`;
 - the jar is `targets/<dir>/build/libs/<mod_name>-<dir>-<mod_version>.jar`.
 
-Publishing never builds anything, so build the jars first with each target's own JDK: `forge-1.16.5` on JDK 8, `fabric-26.1.2` on JDK 25, the other three on JDK 21. The root `-PallTargets=true build` only covers the three JDK 21 targets. `checkPublishJars` runs before every publish task and fails with each missing jar path and its build command.
+Publishing never builds anything, so build the jars first with each target's own JDK: `forge-1.16.5` on JDK 8; `forge-1.18.2` and `forge-1.19.2` on JDK 17; `forge-1.20.1`, `fabric-1.20.1`, `fabric-1.21.1` and `neoforge-1.21.1` on JDK 21; `fabric-26.1.2` and `neoforge-26.1.2` on JDK 25. The root `-PallTargets=true build` only covers the four JDK 21 targets. `checkPublishJars` runs before every publish task and fails with each missing jar path and its build command.
 
 ```powershell
 # every target

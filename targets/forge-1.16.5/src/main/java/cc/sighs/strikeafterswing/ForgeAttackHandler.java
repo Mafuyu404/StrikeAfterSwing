@@ -20,7 +20,7 @@ public final class ForgeAttackHandler {
 
                 @Override
                 public void performAttack(MobEntity attacker, Entity target) {
-                    attacker.doHurtTarget(target);
+                    attacker.attackEntityAsMob(target);
                 }
             });
 

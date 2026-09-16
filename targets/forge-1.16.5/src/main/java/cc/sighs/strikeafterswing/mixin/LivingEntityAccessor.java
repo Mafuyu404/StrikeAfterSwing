@@ -6,6 +6,6 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 
 @Mixin(LivingEntity.class)
 public interface LivingEntityAccessor {
-    @Invoker("getCurrentSwingDuration")
-    int strikeafterswing$getCurrentSwingDuration();
+    @Invoker("getArmSwingAnimationEnd")
+    int strikeafterswing$getArmSwingAnimationEnd();
 }

@@ -2,9 +2,13 @@ plugins {
     id 'me.modmuss50.mod-publish-plugin' version '2.1.1'
 }
 
+// One aggregated Gradle invocation runs on a single JDK, so only JDK 21 targets are listed here.
+// forge-1.16.5 (JDK 8), forge-1.18.2 / forge-1.19.2 (JDK 17) and
+// fabric-26.1.2 / neoforge-26.1.2 (JDK 25) keep their own independent wrapper builds.
 def targetBuilds = [
         'forge-1.20.1'    : [directory: 'targets/forge-1.20.1', task: 'buildForge1201'],
         'fabric-1.20.1'   : [directory: 'targets/fabric-1.20.1', task: 'buildFabric1201'],
+        'fabric-1.21.1'   : [directory: 'targets/fabric-1.21.1', task: 'buildFabric1211'],
         'neoforge-1.21.1' : [directory: 'targets/neoforge-1.21.1', task: 'buildNeoForge1211']
 ]
 

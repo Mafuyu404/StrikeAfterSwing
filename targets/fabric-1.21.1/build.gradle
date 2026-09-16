@@ -1,0 +1,75 @@
+buildscript {
+    repositories {
+        gradlePluginPortal()
+        maven { url = 'https://maven.fabricmc.net/' }
+        mavenCentral()
+    }
+    configurations.classpath {
+        resolutionStrategy.force 'com.google.code.gson:gson:2.11.0'
+    }
+    dependencies {
+        classpath 'net.fabricmc:fabric-loom:1.10.5'
+    }
+}
+
+apply plugin: 'fabric-loom'
+apply plugin: 'java'
+
+def properties = new Properties()
+file('../../gradle.properties').withInputStream { properties.load(it) }
+file('gradle.properties').withInputStream { properties.load(it) }
+properties.each { key, value -> ext.set(key.toString(), value.toString()) }
+
+group = mod_group_id
+version = mod_version
+
+base {
+    archivesName = "${mod_name}-fabric-1.21.1"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+}
+
+// Fabric runs in the intermediary namespace until the 26.x line, so this target still
+// needs a refmap; the name mirrors the mixin configuration.
+loom {
+    mixin {
+        defaultRefmapName = "${mod_id}.fabric121.refmap.json"
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${fabric_121_minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${fabric_121_loader_version}"
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    def replaceProperties = [
+            minecraft_version: fabric_121_minecraft_version,
+            minecraft_version_range: fabric_121_minecraft_version_range,
+            fabric_loader_version: fabric_121_loader_version,
+            mod_id: mod_id,
+            mod_name: mod_name,
+            mod_license: mod_license,
+            mod_version: mod_version,
+            mod_authors: mod_authors,
+            mod_description: mod_description
+    ]
+    inputs.properties replaceProperties
+    filesMatching(['fabric.mod.json', 'pack.mcmeta']) {
+        expand replaceProperties + [project: project]
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
+
+apply from: file('../../gradle/target-conventions/target.gradle')

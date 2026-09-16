@@ -13,23 +13,28 @@
 | Target | JDK | 构建命令 |
 | --- | --- | --- |
 | `forge-1.16.5` | JDK 8 | `targets\forge-1.16.5\.\gradlew.bat clean build` |
+| `forge-1.18.2` | JDK 17 | `targets\forge-1.18.2\.\gradlew.bat clean build` |
+| `forge-1.19.2` | JDK 17 | `targets\forge-1.19.2\.\gradlew.bat clean build` |
 | `forge-1.20.1` | JDK 21 | `targets\forge-1.20.1\.\gradlew.bat clean build` |
 | `fabric-1.20.1` | JDK 21 | `targets\fabric-1.20.1\.\gradlew.bat clean build` |
+| `fabric-1.21.1` | JDK 21 | `targets\fabric-1.21.1\.\gradlew.bat clean build` |
 | `neoforge-1.21.1` | JDK 21 | `targets\neoforge-1.21.1\.\gradlew.bat clean build` |
 | `fabric-26.1.2` | JDK 25 | `targets\fabric-26.1.2\.\gradlew.bat clean build` |
+| `neoforge-26.1.2` | JDK 25 | `targets\neoforge-26.1.2\.\gradlew.bat clean build` |
 
-Fabric 26.1.2 使用 Fabric Loom 1.17 的无开发映射工作流和 Gradle 9.5.1；Forge 1.16.5 使用 ForgeGradle 4.1 和 Gradle 6.9.4。两者都必须用各自声明的 JDK 单独构建。
+Fabric 26.1.2 使用 Fabric Loom 1.17 的无开发映射工作流和 Gradle 9.5.1；Forge 1.16.5 使用 ForgeGradle 4.1 和 Gradle 6.9.4。每个 target 都必须用自己 `ci.properties` 声明的 JDK 单独构建。
 
-根项目默认只同步 `common`。使用 JDK 21 时可选择性构建前三个 target：
+根项目默认只同步 `common`。使用 JDK 21 时可选择性构建四个 JDK 21 的 target：
 
 ```powershell
 .\gradlew.bat '-Ptarget=forge-1.20.1' build
 .\gradlew.bat '-Ptarget=fabric-1.20.1' build
+.\gradlew.bat '-Ptarget=fabric-1.21.1' build
 .\gradlew.bat '-Ptarget=neoforge-1.21.1' build
 .\gradlew.bat -PallTargets=true build
 ```
 
-`forge-1.16.5` 与 `fabric-26.1.2` 因 JDK 要求不同，不纳入根项目的聚合构建。
+`forge-1.16.5`（JDK 8）、`forge-1.18.2` 与 `forge-1.19.2`（JDK 17）、`fabric-26.1.2` 与 `neoforge-26.1.2`（JDK 25）因 JDK 要求不同，不纳入根项目的聚合构建。
 
 ## 结构
 
@@ -52,10 +57,14 @@ Fabric 26.1.2 使用 Fabric Loom 1.17 的无开发映射工作流和 Gradle 9.5.
 
 ```text
 targets/forge-1.16.5/libs/
+targets/forge-1.18.2/libs/
+targets/forge-1.19.2/libs/
 targets/forge-1.20.1/libs/
 targets/fabric-1.20.1/libs/
+targets/fabric-1.21.1/libs/
 targets/neoforge-1.21.1/libs/
 targets/fabric-26.1.2/libs/
+targets/neoforge-26.1.2/libs/
 ```
 
 本地 jar 的传递依赖无法自动推导。若某个 jar 还依赖其他库，需要将这些库也放入同一个 `libs/` 目录，或按常规方式声明依赖。
@@ -116,9 +125,12 @@ $env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-21.0.x'
 发布前必须先用每个 target 自己的 JDK 构建好 jar —— 发布任务不会触发构建：
 
 ```powershell
-.\gradlew.bat -PallTargets=true build                                  # 三个 JDK 21 target
+.\gradlew.bat -PallTargets=true build                                  # 四个 JDK 21 target
 cd targets\forge-1.16.5; .\gradlew.bat build; cd ..\..                  # JDK 8
+cd targets\forge-1.18.2; .\gradlew.bat build; cd ..\..                  # JDK 17
+cd targets\forge-1.19.2; .\gradlew.bat build; cd ..\..                  # JDK 17
 cd targets\fabric-26.1.2; .\gradlew.bat build; cd ..\..                 # JDK 25
+cd targets\neoforge-26.1.2; .\gradlew.bat build; cd ..\..               # JDK 25
 ```
 
 然后回到仓库根发布全部版本：

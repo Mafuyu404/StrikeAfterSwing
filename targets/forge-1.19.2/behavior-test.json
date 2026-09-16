@@ -1,0 +1,5 @@
+{
+  "_comment": "Pinned ports so several targets can run the behaviour test at the same time.",
+  "rconPort": 25676,
+  "serverPort": 25675
+}
