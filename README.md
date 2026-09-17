@@ -90,7 +90,9 @@ ci.attempts=3
 
 ## 行为测试
 
-`scripts/behavior-test/` 在真实专用服务器上验证运行期行为，而不是只检查 mixin 是否注入成功。它建起两个相距 100 格的对称竞技场，各有一只僵尸和一名 `NoAI` 村民（僵尸紧贴村民，因此获取目标后立即攻击）：基准场的僵尸挥击时长是原版的 6 tick，另一只被灌满级挖掘疲劳（amplifier 255），挥击时长变成 `6 + (1 + 255) * 2 = 518` tick。
+`scripts/behavior-test/` 在真实专用服务器上验证运行期行为，而不是只检查 mixin 是否注入成功。它建起两个相距 100 格的对称竞技场，各有一只尸壳和一名 `NoAI` 村民（尸壳紧贴村民，因此获取目标后立即攻击）：基准场的尸壳挥击时长是原版的 6 tick，另一只被灌满级挖掘疲劳（amplifier 255），挥击时长变成 `6 + (1 + 255) * 2 = 518` tick。
+
+用尸壳当攻击者是因为原版 `Husk#doHurtTarget` 会在命中时挂饥饿，而它是拿 `super.doHurtTarget(...)` 的返回值当判据的——所以同一次运行顺带验证「附加效果不会早于首次掉血」，这正是取消攻击却谎报命中的老 bug 会踩到的点。
 
 测试用 `time query gametime` 给两个村民的**首次受击**打时间戳，量的是游戏 tick，因此不受服务器卡顿影响，并断言：
 
@@ -98,8 +100,9 @@ ci.attempts=3
 2. 满级疲劳场的首击比基准场晚 **≥ 300 tick**。
 3. 基准场首击出现在 **≤ 200 tick**。
 4. 满级疲劳场窗口内受击次数 ≤ 2，基准场 ≥ 2（链路持续可用）。
+5. 两个竞技场里饥饿（`Husk` 的附加效果）都出现过，且首次出现不早于该场首次掉血（允许 1 tick 采样误差）——否则说明被推迟的那次调用对外谎报了命中。
 
-`forge-1.20.1` 上的实测值：基准场首击 17 tick、满级疲劳场 533 tick、差值 516（理论值 `518 − 6 = 512`，多出的几 tick 是僵尸首次索敌的相位）；把 mixin 列表清空使模组失效后，差值掉到 4（纯 AI 噪声），测试 FAIL。
+`forge-1.20.1` 上的实测值：基准场首击 23 tick、满级疲劳场 536 tick、差值 513（理论值 `518 − 6 = 512`，多出的几 tick 是尸壳首次索敌的相位；不同轮次实测在 493–516 之间浮动），两个竞技场的饥饿都出现在各自首次掉血的同一 tick；把 mixin 列表清空使模组失效后，差值掉到 4（纯 AI 噪声），测试 FAIL。
 
 驱动器负责准备 `targets/<name>/run/`（写入 `eula=true`、开启 RCON 的 `server.properties`，并把 `pause-when-empty-seconds` 设为 0 —— 服务器默认在无人时自动暂停，会让 `gametime` 冻结、生物停止 tick）、启动专用服务器、运行 `behavior_test.py` 并在结束时停服。等所有测试生物能被 tag 选择器选中后才开始计时，避免刚召唤的实体在区块状态稳定前查不到。一个 target 约 2–4 分钟（首次要生成世界）。`JAVA_HOME` 必须指向该 target 在 `ci.properties` 中声明的 JDK：
 
@@ -114,7 +117,7 @@ $env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-21.0.x'
 { "rconPort": 25581, "serverPort": 25571 }
 ```
 
-该文件也可覆盖命令模板，键为 `rconPort`、`serverPort`、`worldSetup`、`siteSetup`、`spawnTarget`、`spawnAttacker`、`longSwing`、`queryHealth`、`queryTick` 以及可选的 `assertions`；默认模板见 `scripts/behavior-test/commands.json`，占位符有 `{x} {y} {z} {padY} {padX1} {padX2} {padZ1} {padZ2} {attackerX} {targetTag} {attackerTag} {tag}`。版本间的命令语法差异只写在这个文件里，测试逻辑和断言保持统一。
+该文件也可覆盖命令模板，键为 `rconPort`、`serverPort`、`worldSetup`、`siteSetup`、`spawnTarget`、`spawnAttacker`、`longSwing`、`queryHealth`、`queryTargetEffects`、`queryTick` 以及可选的 `assertions`；默认模板见 `scripts/behavior-test/commands.json`，占位符有 `{x} {y} {z} {padY} {padX1} {padX2} {padZ1} {padZ2} {attackerX} {targetTag} {attackerTag} {tag}`。版本间的命令语法差异只写在这个文件里，测试逻辑和断言保持统一。
 
 失败时看命令输出和 `targets/<name>/run/behavior-test-server.log`。
 

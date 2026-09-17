@@ -18,9 +18,10 @@
     "kill @e[type=!player,x={x},y={padY},z={z},distance=..16]"
   ],
   "spawnTarget": "summon minecraft:villager {x} {y} {z} {{Tags:[\"{targetTag}\"],NoAI:1b,PersistenceRequired:1b}}",
-  "spawnAttacker": "summon minecraft:zombie {attackerX} {y} {z} {{Tags:[\"{attackerTag}\"],PersistenceRequired:1b}}",
+  "spawnAttacker": "summon minecraft:husk {attackerX} {y} {z} {{Tags:[\"{attackerTag}\"],PersistenceRequired:1b}}",
   "longSwing": "effect give @e[tag={attackerTag},limit=1] minecraft:mining_fatigue 900 255 true",
   "queryEffects": "data get entity @e[tag={attackerTag},limit=1]",
   "queryHealth": "data get entity @e[tag={tag},limit=1] Health",
+  "queryTargetEffects": "data get entity @e[tag={tag},limit=1]",
   "queryTick": "time query gametime"
 }

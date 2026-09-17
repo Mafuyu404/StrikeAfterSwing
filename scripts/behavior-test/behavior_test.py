@@ -6,17 +6,22 @@ test measures that deferral on a live dedicated server instead of only checking
 that the mixins were applied.
 
 Two identical arenas are set up far apart, each holding one immobile villager and one
-zombie standing next to it. The zombies are spawned first and the long-swing effect is
+husk standing next to it. The attackers are spawned first and the long-swing effect is
 applied while no villager exists yet, so no attack can be queued with the vanilla swing
 duration; the villagers then appear and the AI attacks as soon as it acquires them.
 
-* baseline arena: the zombie's swing duration is the vanilla 6 ticks.
-* long-swing arena: the zombie gets Mining Fatigue at amplifier 255, which pushes
+* baseline arena: the attacker's swing duration is the vanilla 6 ticks.
+* long-swing arena: the attacker gets Mining Fatigue at amplifier 255, which pushes
   ``LivingEntity#getCurrentSwingDuration`` to ``6 + (1 + 255) * 2 = 518`` ticks.
+
+A husk applies the hunger debuff from ``Husk#doHurtTarget`` when its hit lands, so the
+same run also checks that the debuff never shows up before the villager's first damage
+tick: while the attack is deferred the cancelled call must not report success, otherwise
+the vanilla override fires its debuff (and fires it a second time with the deferred hit).
 
 The first hit on each villager is timestamped with ``time query gametime``, so the
 measurement is in game ticks and therefore independent of server lag. With the mod
-loaded the long-swing zombie lands its first hit hundreds of ticks after the
+loaded the long-swing attacker lands its first hit hundreds of ticks after the
 baseline one; without the deferral both land at the same time. A queue that never
 ticks (broken server-tick injection) shows up as "no damage at all".
 
@@ -87,6 +92,12 @@ def load_settings(target):
     return settings
 
 
+# Entity tags carry a per-run suffix: a villager killed in an earlier run keeps its tag
+# through the death animation, and a selector matching that leftover would mix up the
+# health, hunger and effect samples of two different entities.
+RUN_TAG = os.urandom(3).hex()
+
+
 def context_for(site):
     x = site['x']
     z = site['z']
@@ -100,8 +111,8 @@ def context_for(site):
         'padZ1': z - PAD_RADIUS,
         'padZ2': z + PAD_RADIUS,
         'attackerX': x + ATTACKER_OFFSET,
-        'targetTag': 'sas_target_%s' % site['name'],
-        'attackerTag': 'sas_attacker_%s' % site['name'],
+        'targetTag': 'sas_target_%s_%s' % (site['name'], RUN_TAG),
+        'attackerTag': 'sas_attacker_%s_%s' % (site['name'], RUN_TAG),
     }
 
 
@@ -119,6 +130,25 @@ def read_health(connection, template, tag):
     if 'no entity was found' in response.lower():
         return None
     return rcon.parse_number(response)
+
+
+EFFECT_ID_PATTERN = re.compile(r'(?i)\bid\s*:\s*"?([a-z_:]+|\d+)"?')
+
+
+def read_hunger(connection, template, tag):
+    """True when the entity currently carries the hunger effect.
+
+    Effects are stored as ``{Id: 17, ...}`` up to 1.20.4 and as
+    ``{id: "minecraft:hunger", ...}`` from 1.20.5 on, so both forms are accepted.
+    """
+    response = connection.command(template.format(tag=tag))
+    for value in EFFECT_ID_PATTERN.findall(response):
+        if value.isdigit():
+            if int(value) == 17:
+                return True
+        elif value == 'minecraft:hunger':
+            return True
+    return False
 
 
 def wait_until_selectable(connection, tags, assertions):
@@ -174,6 +204,7 @@ def measure(connection, settings, assertions):
             'site': site,
             'context': context,
             'firstHitTick': None,
+            'firstHungerTick': None,
             'hits': 0,
             'lastHealth': None,
             'targetGone': False,
@@ -186,7 +217,7 @@ def measure(connection, settings, assertions):
         require_command(connection, expand(settings['spawnAttacker'], context))
 
     # Wait until the attackers are selectable before touching them, then arm the
-    # long-swing arena. No villager exists yet and a zombie without a target cannot
+    # long-swing arena. No villager exists yet and an attacker without a target cannot
     # attack, so nothing can be queued with the vanilla swing duration. Never arm
     # through "data merge": that round-trips the entity NBT and the effect level is
     # stored as a signed byte, so 255 comes back as 0.
@@ -236,6 +267,9 @@ def measure(connection, settings, assertions):
                 if state['firstHitTick'] is None:
                     state['firstHitTick'] = tick
                 state['lastHealth'] = health
+            if state['firstHungerTick'] is None and read_hunger(
+                    connection, settings['queryTargetEffects'], state['context']['targetTag']):
+                state['firstHungerTick'] = tick
 
         if tick >= assertions['windowTicks']:
             break
@@ -281,17 +315,31 @@ def evaluate(sites, assertions):
         raise TestFailure('baseline arena only took %d hits, expected at least %d'
                           % (baseline['hits'], assertions['minBaselineHits']))
 
+    for state in sites:
+        if state['firstHungerTick'] is None:
+            raise TestFailure('%s arena: the hunger debuff never showed up, so the vanilla '
+                              'doHurtTarget override did not run with the deferred hit'
+                              % state['site']['name'])
+        if state['firstHungerTick'] < state['firstHitTick'] - 1:
+            raise TestFailure('%s arena: hunger appeared at tick %d but the first damage only '
+                              'landed at tick %d: the cancelled call reported success, so the '
+                              'vanilla override fired its debuff ahead of the hit'
+                              % (state['site']['name'], state['firstHungerTick'],
+                                 state['firstHitTick']))
+
     return deferral
 
 
 def report(sites, deferral, assertions):
     print('')
     print('    measured (game ticks since the arenas were armed):')
-    print('      %-12s %-12s %-8s %s' % ('arena', 'first hit', 'hits', 'final health'))
+    print('      %-12s %-12s %-12s %-8s %s'
+          % ('arena', 'first hit', 'hunger', 'hits', 'final health'))
     for state in sites:
-        print('      %-12s %-12s %-8d %s' % (
+        print('      %-12s %-12s %-12s %-8d %s' % (
             state['site']['name'],
             state['firstHitTick'],
+            state['firstHungerTick'],
             state['hits'],
             'target removed' if state['targetGone'] else state['lastHealth'],
         ))

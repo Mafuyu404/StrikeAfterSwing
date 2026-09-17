@@ -43,7 +43,7 @@ gradle/publish.gradle           根项目唯一的发布配置（覆盖全部 ta
 9 个 target 的实现逐行等价，只有类型名和平台调用签名不同。新增或修改 target 时必须保持一致：
 
 - `cc.sighs.strikeafterswing.<Loader>AttackHandler`：静态 `PendingAttackManager<Mob, Entity>` + 匿名 `AttackBridge`，只暴露 `delayAttack` 与 `tick`；不要版本后缀，不要 `Legacy` 前缀。
-- `mixin/MobAttackMixin`：`@Mixin(Mob.class)` + `@Inject(method = "doHurtTarget", at = @At("HEAD"), cancellable = true)`，方法体只做「读挥击时长 → `delayAttack` → 命中则 `cir.setReturnValue(true)`」。
+- `mixin/MobAttackMixin`：`@Mixin(Mob.class)` + `@Inject(method = "doHurtTarget", at = @At("HEAD"), cancellable = true)`，方法体只做「读挥击时长 → `delayAttack` → 已推迟则 `cir.setReturnValue(false)`」。**必须是 `false`，不要改成 `true`**：原版覆写类（`Husk`、`Zombie`、`CaveSpider`、`WitherSkeleton`、`Warden`、`Ravager`、`Panda`、`PolarBear`、`Hoglin`）用 `super.doHurtTarget(...)` 的返回值门控附加效果，伪造 `true` 会让饥饿/中毒/点燃在延迟命中之前就生效，并在延迟命中时再触发一次；返回 `false` 时这些效果由延迟命中那次调用正常触发，只发生一次。调用方（`MeleeAttackGoal`、`MeleeAttack` 行为等）都忽略该返回值。
 - `mixin/MinecraftServerTickMixin`：只注入一个点，`@Inject(method = "tickServer", at = @At("TAIL"))`。
 - `mixin/LivingEntityAccessor`：用 `@Invoker("getCurrentSwingDuration")` 访问器，不要反射。
 - 禁止 `remap = false`、`@Pseudo`、`@Coerce`、`require = 0`、SRG/混淆名（`func_*`、`field_*`、`method_*`）、反射和重复的 tick 注入点。注入点写运行时真实名称，跨命名空间映射交给 refmap。

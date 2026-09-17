@@ -182,7 +182,7 @@ targets/<name>/.../client/
 - 任何改动 `common/` 的 PR，至少触发所有当前支持 target 的 build job。
 - 任何改动一个 target 的资源、Mixin 或 metadata 的 PR，至少检查最终 jar 是否包含对应 metadata、配置文件和 common class。
 - 构建成功不代替运行验证。涉及事件、网络、Mixin、注册、渲染或数据包时，应在 PR 中记录 client、dedicated server、reload 或 data generation 的实际验证范围。
-- 行为测试是这条规则在「攻击延后」语义上的具体实现：它在专用服务器上放两个相距 100 格的对称竞技场，各一只僵尸与一名 `NoAI` 村民，满级挖掘疲劳（amplifier 255）把其中一只的挥击时长推到 518 tick，然后断言两队首次受击的游戏 tick 差值 ≥ 300（1.20.1 实测 512，禁用 mixin 后掉到 4）。它每 target 约 2–4 分钟，但能抓到编译与 mixin 注入检查都发现不了的运行期回归（例如 server tick 注入丢失导致队列从不执行）。改动 `common` 的攻击语义、target 的 Mixin、入口或 server tick 链路时必须跑，并在 PR 中记录实测数字。
+- 行为测试是这条规则在「攻击延后」语义上的具体实现：它在专用服务器上放两个相距 100 格的对称竞技场，各一只尸壳与一名 `NoAI` 村民，满级挖掘疲劳（amplifier 255）把其中一只的挥击时长推到 518 tick，然后断言两队首次受击的游戏 tick 差值 ≥ 300（1.20.1 实测 493–516，取决于索敌相位；禁用 mixin 后掉到 4），并断言尸壳的饥饿不早于该场首次掉血（取消攻击时若对外谎报命中，原版覆写类会提前触发附加效果）。它每 target 约 2–4 分钟，但能抓到编译与 mixin 注入检查都发现不了的运行期回归（例如 server tick 注入丢失导致队列从不执行）。改动 `common` 的攻击语义、target 的 Mixin、入口或 server tick 链路时必须跑，并在 PR 中记录实测数字。
 - 并行跑多个 target 的行为测试时必须用各 target 的 `targets/<name>/behavior-test.json` 错开 `rconPort` 与 `serverPort`。
 
 ## Common 自动验证
