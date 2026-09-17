@@ -15,9 +15,12 @@ duration; the villagers then appear and the AI attacks as soon as it acquires th
   ``LivingEntity#getCurrentSwingDuration`` to ``6 + (1 + 255) * 2 = 518`` ticks.
 
 A husk applies the hunger debuff from ``Husk#doHurtTarget`` when its hit lands, so the
-same run also checks that the debuff never shows up before the villager's first damage
-tick: while the attack is deferred the cancelled call must not report success, otherwise
-the vanilla override fires its debuff (and fires it a second time with the deferred hit).
+same run also checks that the debuff never shows up while the villager is still at full
+health: while the attack is deferred the cancelled call must not report success, otherwise
+the vanilla override fires its debuff ahead of the hit (and again with the deferred hit).
+The check is written against the target's health rather than against the measured
+first-hit tick, which comes out one hit late whenever the first poll happens to land after
+that hit.
 
 The first hit on each villager is timestamped with ``time query gametime``, so the
 measurement is in game ticks and therefore independent of server lag. With the mod
@@ -205,6 +208,7 @@ def measure(connection, settings, assertions):
             'context': context,
             'firstHitTick': None,
             'firstHungerTick': None,
+            'hungerWithoutDamage': False,
             'hits': 0,
             'lastHealth': None,
             'targetGone': False,
@@ -256,24 +260,42 @@ def measure(connection, settings, assertions):
         for state in sites:
             if state['targetGone']:
                 continue
+            # Read the hunger first: a hit applies its damage and then its debuff in the same
+            # tick, so a health read taken after the debuff was seen must already show that
+            # damage. A debuff showing up while the target's health did not drop is the
+            # regression this guards: the cancelled attack reported success, so the vanilla
+            # override fired its debuff ahead of the hit.
+            has_hunger = read_hunger(connection, settings['queryTargetEffects'],
+                                     state['context']['targetTag'])
             health = read_health(connection, settings['queryHealth'], state['context']['targetTag'])
             if health is None:
                 state['targetGone'] = True
                 continue
-            if state['lastHealth'] is None:
+            had_previous = state['lastHealth'] is not None
+            dropped = had_previous and health < state['lastHealth']
+            if not had_previous or dropped:
                 state['lastHealth'] = health
-            elif health < state['lastHealth']:
+            if dropped:
                 state['hits'] += 1
                 if state['firstHitTick'] is None:
                     state['firstHitTick'] = tick
-                state['lastHealth'] = health
-            if state['firstHungerTick'] is None and read_hunger(
-                    connection, settings['queryTargetEffects'], state['context']['targetTag']):
+            if has_hunger and state['firstHungerTick'] is None:
                 state['firstHungerTick'] = tick
+                # No hit has been observed yet, so this debuff cannot have come with a hit:
+                # the cancelled call reported success and the vanilla override fired it off
+                # a hit that never happened. A debuff seen after a hit is normal, even when
+                # the hit and the debuff were sampled in different polls.
+                if state['firstHitTick'] is None:
+                    state['hungerWithoutDamage'] = True
 
         if tick >= assertions['windowTicks']:
             break
-        if all(state['firstHitTick'] is not None for state in sites):
+        # Keep polling until every site has seen both a hit and the debuff that comes with
+        # it: the hunger read runs before the health read, so a hit landing between those two
+        # commands would otherwise end the loop without the next poll seeing its debuff.
+        if all(state['firstHitTick'] is not None
+               and (state['firstHungerTick'] is not None or state['targetGone'])
+               for state in sites):
             break
         time.sleep(0.02)
 
@@ -320,12 +342,11 @@ def evaluate(sites, assertions):
             raise TestFailure('%s arena: the hunger debuff never showed up, so the vanilla '
                               'doHurtTarget override did not run with the deferred hit'
                               % state['site']['name'])
-        if state['firstHungerTick'] < state['firstHitTick'] - 1:
-            raise TestFailure('%s arena: hunger appeared at tick %d but the first damage only '
-                              'landed at tick %d: the cancelled call reported success, so the '
-                              'vanilla override fired its debuff ahead of the hit'
-                              % (state['site']['name'], state['firstHungerTick'],
-                                 state['firstHitTick']))
+        if state['hungerWithoutDamage']:
+            raise TestFailure('%s arena: the hunger debuff showed up at tick %d while the '
+                              'target had not lost any health: the cancelled call reported '
+                              'success, so the vanilla override fired its debuff ahead of '
+                              'the hit' % (state['site']['name'], state['firstHungerTick']))
 
     return deferral
 
