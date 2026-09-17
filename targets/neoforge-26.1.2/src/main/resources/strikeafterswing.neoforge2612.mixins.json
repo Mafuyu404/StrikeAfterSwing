@@ -6,7 +6,8 @@
   "mixins": [
     "LivingEntityAccessor",
     "MobAttackMixin",
-    "MinecraftServerTickMixin"
+    "MinecraftServerTickMixin",
+    "SwingDurationMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -31,6 +31,7 @@ gradle/publish.gradle           根项目唯一的发布配置（覆盖全部 ta
 | Target 构建约定 | `gradle/target-conventions/target.gradle` | 所有 target 共用；只放构建约定，target 不复制。 |
 | 发布配置 | `gradle/publish.gradle`（仅根项目应用） | 唯一的发布入口，一次发布全部 target。 |
 | CI 描述符 | `targets/<name>/ci.properties` | 每个 target 必需；决定 CI 是否构建与使用哪个 JDK。 |
+| 运行时配置 | 游戏目录的 `config/strikeafterswing/windup.json` | 由各 target 的 `WindupConfig` 读写；路径、文件名与 JSON 结构在 9 个 target 中必须一致，不入库。 |
 
 `libs/` 中的普通 jar 不会自动带来传递依赖；依赖的其他 jar 也必须放入同一个 `libs/`，或改用正常的 Maven 依赖声明。不要把 `*-sources.jar`、`*-javadoc.jar` 或构建产物误放入此目录。
 
@@ -46,6 +47,8 @@ gradle/publish.gradle           根项目唯一的发布配置（覆盖全部 ta
 - `mixin/MobAttackMixin`：`@Mixin(Mob.class)` + `@Inject(method = "doHurtTarget", at = @At("HEAD"), cancellable = true)`，方法体只做「读挥击时长 → `delayAttack` → 已推迟则 `cir.setReturnValue(false)`」。**必须是 `false`，不要改成 `true`**：原版覆写类（`Husk`、`Zombie`、`CaveSpider`、`WitherSkeleton`、`Warden`、`Ravager`、`Panda`、`PolarBear`、`Hoglin`）用 `super.doHurtTarget(...)` 的返回值门控附加效果，伪造 `true` 会让饥饿/中毒/点燃在延迟命中之前就生效，并在延迟命中时再触发一次；返回 `false` 时这些效果由延迟命中那次调用正常触发，只发生一次。调用方（`MeleeAttackGoal`、`MeleeAttack` 行为等）都忽略该返回值。
 - `mixin/MinecraftServerTickMixin`：只注入一个点，`@Inject(method = "tickServer", at = @At("TAIL"))`。
 - `mixin/LivingEntityAccessor`：用 `@Invoker("getCurrentSwingDuration")` 访问器，不要反射。
+- `mixin/SwingDurationMixin`：模组里**唯一**应用倍率的地方，`@Inject(method = "getCurrentSwingDuration", at = @At("RETURN"), cancellable = true)`，对非 `Mob`（即玩家等）直接返回原值，其余调用 `WindupConfig.scaleSwingDuration`。原版用这个返回值同时驱动挥击动画（`updateSwingTime`）和挥击节奏，所以动画与延迟命中必然同步；`MobAttackMixin` 读到的也就是缩放后的时长，**不要在那里再乘第二次**。
+- `WindupConfig`：每个 target 一份，负责定位该加载器的配置目录（Forge/NeoForge 用 `FMLPaths.CONFIGDIR`，Fabric 用 `FabricLoader#getConfigDir`）、按需写入默认文件、解析 `strikeafterswing/windup.json`，并把实体类型转成字符串 id 后交给 `common` 的 `WindupMultipliers`。文件按 mtime/大小节流热重载（查询路径只读一个 volatile 时间戳，检查间隔 2 秒；删除文件退回默认且不重建，解析失败保留上一次的值），因此查询路径必须保持无锁、无 IO。倍率语义、默认值与时长计算只在 `common`；target 里不要重复这些逻辑，也不要用平台 config API（ForgeConfigSpec/ModConfigSpec/ClothConfig）另开一套配置格式。
 - 禁止 `remap = false`、`@Pseudo`、`@Coerce`、`require = 0`、SRG/混淆名（`func_*`、`field_*`、`method_*`）、反射和重复的 tick 注入点。注入点写运行时真实名称，跨命名空间映射交给 refmap。
 - Mixin 配置：`required: true`、`injectors.defaultRequire: 1`、`compatibilityLevel` 与该 target 的 JDK 一致；写 `"refmap": "<mod_id>.<loader><version>.refmap.json"` 时必须与 `build.gradle` 中的 refmap 声明一致。**需要 refmap 的平台**：Forge 全部（1.16.5/1.18.2/1.19.2/1.20.1，运行期是 SRG）以及 Fabric 1.20.x/1.21.x（运行期是 intermediary）。**不需要 refmap**：NeoForge 1.20.5 及以后（`neoforge-1.21.1`、`neoforge-26.1.2`）与 Fabric 26.x（`fabric-26.1.2`，运行期即官方名）。
 - 只有平台 API 真的不同（如 26.1.2 的 `doHurtTarget(ServerLevel, Entity)`、1.16.5 的 `removed` 字段）才允许出现差异，且差异只写在对应 target 里，不得引入运行时版本判断。
