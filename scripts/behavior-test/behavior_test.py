@@ -150,16 +150,22 @@ def measure(connection, settings, assertions):
     for command in settings['worldSetup']:
         require_command(connection, command)
 
-    # A starved server (heavy parallel builds on a developer machine) still counts
-    # ticks correctly, but everything runs so slowly that the arenas drift apart and
-    # the measurement becomes meaningless. Refuse to report numbers from such a run.
-    tick_before = read_tick(connection, settings['queryTick'])
-    time.sleep(3)
-    ticks_in_three_seconds = read_tick(connection, settings['queryTick']) - tick_before
+    # A starved server (heavy parallel builds on a developer machine, or a cold CI runner
+    # still settling after world generation) counts ticks correctly but runs everything so
+    # slowly that the arenas drift apart. Wait for it to settle instead of failing straight
+    # away; only refuse to report numbers when it never does.
+    deadline = time.time() + 120
+    ticks_in_three_seconds = 0
+    while time.time() < deadline:
+        tick_before = read_tick(connection, settings['queryTick'])
+        time.sleep(3)
+        ticks_in_three_seconds = read_tick(connection, settings['queryTick']) - tick_before
+        if ticks_in_three_seconds >= 15:
+            break
     if ticks_in_three_seconds < 15:
         raise TestFailure(
-            'server is starved or paused: only %d ticks in 3s (need 15); re-run without '
-            'other heavy jobs running' % ticks_in_three_seconds)
+            'server never reached a usable tick rate: only %d ticks in 3s (need 15) '
+            'after waiting 120s' % ticks_in_three_seconds)
 
     sites = []
     for site in SITES:

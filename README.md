@@ -24,6 +24,8 @@
 
 Fabric 26.1.2 使用 Fabric Loom 1.17 的无开发映射工作流和 Gradle 9.5.1；Forge 1.16.5 使用 ForgeGradle 4.1 和 Gradle 6.9.4。每个 target 都必须用自己 `ci.properties` 声明的 JDK 单独构建。
 
+`forge-1.16.5` 目前 `ci.enabled=false`，不在 CI 矩阵中：ForgeGradle 4.1 需要 `net.minecraft:mappings_official:1.16.5`，该工件已从 Forge 的 maven 下架（zip 与 pom 均为 404），冷缓存构建会在 `createMcpToSrg` 失败；改用 MCP snapshot 通道虽然还能取到映射，但会撞上 FG 4.1 自身写目录失败的 bug。这属于上游问题，本机存在既有 ForgeGradle MCP 缓存时该 target 仍能正常构建、测试与发布。
+
 根项目默认只同步 `common`。使用 JDK 21 时可选择性构建四个 JDK 21 的 target：
 
 ```powershell

@@ -81,6 +81,8 @@ cd targets\forge-1.20.1
 
 根项目的 `-PallTargets=true build` 只覆盖四个 JDK 21 target（`forge-1.20.1`、`fabric-1.20.1`、`fabric-1.21.1`、`neoforge-1.21.1`），不能替代 `forge-1.16.5`（JDK 8）、`forge-1.18.2` 与 `forge-1.19.2`（JDK 17）、`fabric-26.1.2` 与 `neoforge-26.1.2`（JDK 25）的独立构建。
 
+`forge-1.16.5` 的 `ci.properties` 是 `ci.enabled=false`：ForgeGradle 4.1 依赖 `net.minecraft:mappings_official:1.16.5`，该工件已从 Forge 的 maven 下架，冷缓存（CI）构建必然在 `createMcpToSrg` 失败；MCP snapshot 通道的映射虽仍可下载，但会触发 FG 4.1 自身 `MinecraftUserRepo.findSrgToMcp` 写目录失败。这属于上游问题，**不要**为了绕过而改回反射、SRG 名或 `remap = false`。本机存在既有 ForgeGradle MCP 缓存时该 target 仍能正常构建、测试与发布；等上游修复后再把 `ci.enabled` 打开。
+
 ### 发布
 
 发布只在仓库根项目配置和触发：`gradle/publish.gradle` 从每个 target 自己的 `gradle.properties` 读取加载器与 Minecraft 版本，一次性发布全部 target 的 jar。不要在 target 里添加发布逻辑，也不要逐个版本单独发布。

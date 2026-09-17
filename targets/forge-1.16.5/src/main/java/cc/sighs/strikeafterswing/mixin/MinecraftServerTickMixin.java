@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(MinecraftServer.class)
 public abstract class MinecraftServerTickMixin {
-    @Inject(method = "tick", at = @At("TAIL"))
+    @Inject(method = "tickServer", at = @At("TAIL"))
     private void strikeafterswing$tickPendingAttacks(BooleanSupplier hasTimeLeft, CallbackInfo ci) {
         ForgeAttackHandler.tick();
     }

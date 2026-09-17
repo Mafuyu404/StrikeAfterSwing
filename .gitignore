@@ -29,3 +29,6 @@ common/build/
 # Python bytecode cache from scripts/behavior-test/
 __pycache__/
 *.pyc
+
+# Scratch output from local verification runs
+.verify-logs/

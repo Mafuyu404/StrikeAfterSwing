@@ -10,10 +10,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(MobEntity.class)
 public abstract class MobAttackMixin {
-    @Inject(method = "attackEntityAsMob", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "doHurtTarget", at = @At("HEAD"), cancellable = true)
     private void strikeafterswing$delayMobAttack(Entity target, CallbackInfoReturnable<Boolean> cir) {
         MobEntity attacker = (MobEntity) (Object) this;
-        int delayTicks = ((LivingEntityAccessor) attacker).strikeafterswing$getArmSwingAnimationEnd();
+        int delayTicks = ((LivingEntityAccessor) attacker).strikeafterswing$getCurrentSwingDuration();
         if (ForgeAttackHandler.delayAttack(attacker, target, delayTicks)) {
             cir.setReturnValue(true);
         }
