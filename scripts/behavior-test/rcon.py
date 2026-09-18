@@ -23,7 +23,10 @@ class RconError(Exception):
 
 
 class Rcon:
-    def __init__(self, host, port, password, timeout=10.0):
+    def __init__(self, host, port, password, timeout=120.0):
+        # Generous by default: a dedicated server stalls for tens of seconds while it generates
+        # the chunks around a freshly forceloaded arena in a world that has never been played.
+        self.timeout = timeout
         self.sock = socket.create_connection((host, port), timeout=timeout)
         self.sock.settimeout(timeout)
         self.next_id = 0
@@ -43,7 +46,13 @@ class Rcon:
         chunks = []
         remaining = count
         while remaining > 0:
-            chunk = self.sock.recv(remaining)
+            try:
+                chunk = self.sock.recv(remaining)
+            except TimeoutError:
+                # Report it as an RconError so the caller fails with a readable message instead
+                # of an unhandled traceback.
+                raise RconError('no reply from the server within %ds; it stalls while generating '
+                                'chunks for a freshly forceloaded arena' % int(self.timeout))
             if not chunk:
                 raise RconError('connection closed by server')
             chunks.append(chunk)

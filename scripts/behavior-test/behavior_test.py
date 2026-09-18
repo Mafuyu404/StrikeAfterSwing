@@ -121,6 +121,9 @@ DEFAULT_ASSERTIONS = {
     'pollTimeoutSeconds': 300,
     'visibilityTimeoutSeconds': 90,
     'tickRateWaitSeconds': 300,
+    # A forceloaded chunk is only actually loaded on a later tick, so arena commands are retried
+    # while the server still answers "That position is not loaded" (40 x 0.25s of slack).
+    'chunkLoadRetrySeconds': 0.25,
     # The mod re-checks the config file every two seconds, and only while a mob is attacking.
     # Wait for two full intervals plus a margin so the next scenario's first swing cannot be
     # queued before the rewrite has been noticed.
@@ -196,8 +199,6 @@ def context_for(site, scenario):
         'padX2': x + pad_x,
         'padZ1': z - pad_z,
         'padZ2': z + pad_z,
-        'chunkX': x // 16,
-        'chunkZ': z // 16,
         'attackerX': x + ATTACKER_OFFSET,
         'escapeX': site.get('escapeTo', x),
         'attacker': site.get('attacker', 'husk'),
@@ -245,6 +246,29 @@ def require_command(connection, command, allow_empty=True):
     response = connection.command(command)
     rcon.require_ok(response, command, allow_empty=allow_empty)
     return response
+
+
+def require_loaded_command(connection, command, assertions, attempts=40):
+    """Runs a command, retrying while the server reports the position as unloaded.
+
+    ``forceload`` only marks chunks; the server actually loads them on a later tick. On a world
+    that has never generated those chunks (CI checks out a clean tree and the driver creates the
+    run directory from scratch) the fill that follows immediately can therefore fail with "That
+    position is not loaded", and anything summoned into that chunk would never tick.
+
+    Retrying is safe for everything run through here: the arena commands (forceload, fill, kill)
+    are idempotent, and a summon that failed because the chunk was missing did not create
+    anything to duplicate.
+    """
+    delay = assertions['chunkLoadRetrySeconds']
+    for attempt in range(attempts):
+        response = connection.command(command)
+        if 'not loaded' not in response.lower():
+            rcon.require_ok(response, command)
+            return response
+        time.sleep(delay)
+    raise TestFailure('the chunk needed by %r never loaded (%d attempts, %.1fs apart)'
+                      % (command, attempts, delay))
 
 
 def wait_until_selectable(connection, tags, assertions):
@@ -333,9 +357,9 @@ def build_sites(connection, settings, assertions, scenario, site_defs):
         })
 
         for command in settings['siteSetup']:
-            require_command(connection, expand(command, context))
+            require_loaded_command(connection, expand(command, context), assertions)
 
-        require_command(connection, expand(settings['spawnAttacker'], context))
+        require_loaded_command(connection, expand(settings['spawnAttacker'], context), assertions)
 
     # Wait until the attackers are selectable before touching them, then arm them. No villager
     # exists yet and an attacker without a target cannot attack, so nothing can be queued with
@@ -369,7 +393,8 @@ def build_sites(connection, settings, assertions, scenario, site_defs):
 
 def spawn_targets(connection, settings, assertions, states):
     for state in states:
-        require_command(connection, expand(settings['spawnTarget'], state['context']))
+        require_loaded_command(connection, expand(settings['spawnTarget'], state['context']),
+                               assertions)
     wait_until_selectable(connection, [state['context']['targetTag'] for state in states],
                           assertions)
 

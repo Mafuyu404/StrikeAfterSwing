@@ -12,9 +12,9 @@
     "weather clear",
     "kill @e[type=!player]"
   ],
-  "_comment_siteSetup": "先把场地空间清到 y=95..110 再铺平台：只铺 y=100 一层不够，测试世界里残留的地形方块会把刚召唤的攻击者卡住（曾表现为僵尸整场一次都不挥击）。",
+  "_comment_siteSetup": "先把场地空间清到 y=95..110 再铺平台：只铺 y=100 一层不够，测试世界里残留的地形方块会把刚召唤的攻击者卡住（曾表现为僵尸整场一次都不挥击）。forceload 的参数是方块坐标（取其所在区块），必须覆盖整个场地矩形：全新世界里只要有一个相关区块没加载，紧接着的 fill 就会报 That position is not loaded。",
   "siteSetup": [
-    "forceload add {chunkX} {chunkZ}",
+    "forceload add {padX1} {padZ1} {padX2} {padZ2}",
     "fill {padX1} 95 {padZ1} {padX2} 110 {padZ2} minecraft:air",
     "fill {padX1} {padY} {padZ1} {padX2} {padY} {padZ2} minecraft:stone",
     "kill @e[type=!player,x={x},y={padY},z={z},distance=..16]"

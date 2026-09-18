@@ -139,7 +139,7 @@ $env:JAVA_HOME = 'C:\Program Files\Eclipse Adoptium\jdk-21.0.x'
 { "rconPort": 25581, "serverPort": 25571 }
 ```
 
-该文件也可覆盖命令模板，键为 `rconPort`、`serverPort`、`worldSetup`、`siteSetup`、`spawnTarget`、`spawnAttacker`、`longSwing`、`slowAttacker`、`escapeTarget`、`queryEffects`、`queryHealth`、`queryTargetEffects`、`queryTick` 以及可选的 `assertions`；默认模板见 `scripts/behavior-test/commands.json`，占位符有 `{x} {y} {z} {padY} {padX1} {padX2} {padZ1} {padZ2} {chunkX} {chunkZ} {attackerX} {escapeX} {attacker} {targetTag} {attackerTag} {tag}`。注意 `forceload` 收的是**区块**坐标，所以模板里用的是 `{chunkX}`/`{chunkZ}`；`spawnAttacker` 里的 `{attacker}` 由场景指定（尸壳或僵尸）。场景定义和断言本身对所有 target 一致，版本间的命令语法差异只写在这个文件里。
+该文件也可覆盖命令模板，键为 `rconPort`、`serverPort`、`worldSetup`、`siteSetup`、`spawnTarget`、`spawnAttacker`、`longSwing`、`slowAttacker`、`escapeTarget`、`queryEffects`、`queryHealth`、`queryTargetEffects`、`queryTick` 以及可选的 `assertions`；默认模板见 `scripts/behavior-test/commands.json`，占位符有 `{x} {y} {z} {padY} {padX1} {padX2} {padZ1} {padZ2} {attackerX} {escapeX} {attacker} {targetTag} {attackerTag} {tag}`。`forceload` 的参数是方块坐标，模板用 `{padX1} {padZ1} {padX2} {padZ2}` 覆盖整个场地矩形——全新世界里漏掉其中任何一个区块，紧接着的 `fill` 就会报 `That position is not loaded`；`spawnAttacker` 里的 `{attacker}` 由场景指定（尸壳或僵尸）。场景定义和断言本身对所有 target 一致，版本间的命令语法差异只写在这个文件里。
 
 失败时看命令输出和 `targets/<name>/run/behavior-test-server.log`。
 
