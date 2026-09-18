@@ -19,6 +19,15 @@ public final class ForgeAttackHandler {
                 }
 
                 @Override
+                public boolean isTargetInReach(Mob attacker, Entity target) {
+                    // 与 MeleeAttackGoal#getAttackReachSqr 相同的近战范围：命中被延迟到挥击结束后才结算，
+                    // 必须重新确认目标没有跑出范围。
+                    double reach = attacker.getBbWidth() * 2.0D * attacker.getBbWidth() * 2.0D
+                            + target.getBbWidth();
+                    return attacker.distanceToSqr(target) <= reach;
+                }
+
+                @Override
                 public void performAttack(Mob attacker, Entity target) {
                     attacker.doHurtTarget(target);
                 }

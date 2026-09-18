@@ -43,7 +43,7 @@ gradle/publish.gradle           根项目唯一的发布配置（覆盖全部 ta
 
 9 个 target 的实现逐行等价，只有类型名和平台调用签名不同。新增或修改 target 时必须保持一致：
 
-- `cc.sighs.strikeafterswing.<Loader>AttackHandler`：静态 `PendingAttackManager<Mob, Entity>` + 匿名 `AttackBridge`，只暴露 `delayAttack` 与 `tick`；不要版本后缀，不要 `Legacy` 前缀。
+- `cc.sighs.strikeafterswing.<Loader>AttackHandler`：静态 `PendingAttackManager<Mob, Entity>` + 匿名 `AttackBridge`，只暴露 `delayAttack` 与 `tick`；不要版本后缀，不要 `Legacy` 前缀。`AttackBridge#isTargetInReach` 必须用该版本 AI 自己的近战范围判定：1.21+（`fabric-1.21.1`、`neoforge-1.21.1`、`fabric-26.1.2`、`neoforge-26.1.2`）直接用 `Mob#isWithinMeleeAttackRange`（26.1.2 会算上 `ATTACK_RANGE` 组件），1.20.1 及更早用 `MeleeAttackGoal#getAttackReachSqr` 的公式 `(bbWidth * 2)^2 + target.getBbWidth()` 配合 `distanceToSqr`。距离计算留在 target，不要挪进 `common`；也**不要**省掉这一步：`Mob#doHurtTarget` 自身不做任何距离检查，少了它就会出现"目标撤出攻击范围仍然挨打"的隔空命中。
 - `mixin/MobAttackMixin`：`@Mixin(Mob.class)` + `@Inject(method = "doHurtTarget", at = @At("HEAD"), cancellable = true)`，方法体只做「读挥击时长 → `delayAttack` → 已推迟则 `cir.setReturnValue(false)`」。**必须是 `false`，不要改成 `true`**：原版覆写类（`Husk`、`Zombie`、`CaveSpider`、`WitherSkeleton`、`Warden`、`Ravager`、`Panda`、`PolarBear`、`Hoglin`）用 `super.doHurtTarget(...)` 的返回值门控附加效果，伪造 `true` 会让饥饿/中毒/点燃在延迟命中之前就生效，并在延迟命中时再触发一次；返回 `false` 时这些效果由延迟命中那次调用正常触发，只发生一次。调用方（`MeleeAttackGoal`、`MeleeAttack` 行为等）都忽略该返回值。
 - `mixin/MinecraftServerTickMixin`：只注入一个点，`@Inject(method = "tickServer", at = @At("TAIL"))`。
 - `mixin/LivingEntityAccessor`：用 `@Invoker("getCurrentSwingDuration")` 访问器，不要反射。

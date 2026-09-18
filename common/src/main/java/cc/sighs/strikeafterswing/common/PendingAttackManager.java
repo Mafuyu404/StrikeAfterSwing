@@ -46,6 +46,12 @@ public final class PendingAttackManager<M, E> {
             return;
         }
 
+        // 挥击期间目标可能已经跑出攻击范围：结算前用原版的近战范围判定重新确认一次，
+        // 落空就丢弃这次命中（挥击动画照常播完，与原版打空一致）。
+        if (!bridge.isTargetInReach(attack.attacker, attack.target)) {
+            return;
+        }
+
         bypassing = true;
         try {
             bridge.performAttack(attack.attacker, attack.target);
